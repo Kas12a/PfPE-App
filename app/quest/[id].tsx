@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import GradientCard from "../../components/ui/GradientCard";
@@ -8,11 +9,43 @@ import ListItem from "../../components/ui/ListItem";
 import Screen from "../../components/ui/Screen";
 import SectionHeader from "../../components/ui/SectionHeader";
 import { S } from "../../src/theme/spacing";
+import { useProfile } from "../../src/hooks/useProfile";
+import { useToast } from "../../src/hooks/useToast";
 
 const data: Record<
   string,
   { title: string; category: string; about: string; impact: string; badge: string }
 > = {
+  // IDs used by app/(tabs)/quests.tsx
+  walk: {
+    title: "Walk to work",
+    category: "movement",
+    about: "Choose active transportation for your commute",
+    impact: "1.2 kg CO₂ saved",
+    badge: "Easy · 30 min",
+  },
+  "reusable-cup": {
+    title: "Use a reusable cup",
+    category: "waste",
+    about: "Avoid single-use cups by bringing your own",
+    impact: "0.3 kg waste avoided",
+    badge: "Easy · 2 min",
+  },
+  "plant-based": {
+    title: "Plant-based lunch",
+    category: "food",
+    about: "Swap meat for a plant-based meal",
+    impact: "2.5 kg CO₂ saved",
+    badge: "Easy · 20 min",
+  },
+  "led-bulb": {
+    title: "Switch to LED bulb",
+    category: "energy",
+    about: "Replace an incandescent bulb with an LED",
+    impact: "Energy saver",
+    badge: "Easy · 10 min",
+  },
+  // Extra examples kept for future use
   "plant-tree": {
     title: "Plant a tree",
     category: "nature",
@@ -38,10 +71,13 @@ const data: Record<
 
 export default function QuestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const q = data[id ?? "plant-tree"];
+  const q = data[id ?? "walk"] ?? data["walk"]; // safe fallback
+  const { setProfile } = useProfile();
+  const { showToast } = useToast();
 
   return (
-    <Screen showBack title={q.title} subtitle={q.category}>
+    <Screen>
+      <SectionHeader title={q.title} subtitle={q.category} />
       {/* three stat chips row */}
       <View style={styles.chipsRow}>
         <Chip icon="🏅" label="+100 points" tint="green" />
@@ -51,26 +87,44 @@ export default function QuestDetail() {
 
       <SectionHeader title="About This Quest" subtitle={q.about} style={{ marginTop: S.lg }} />
 
-      <GradientCard
-        title="Environment Impact"
-        leftValue={q.impact}
-        style={{ marginTop: S.md }}
-      />
+      <GradientCard style={{ marginTop: S.md }}>
+        <SectionHeader title="Environment Impact" subtitle={q.impact} />
+      </GradientCard>
 
       <SectionHeader title="How to Complete" style={{ marginTop: S.lg }} />
 
       <Card style={{ marginTop: S.md }}>
-        <ListItem left="1" title="Gather your supplies" />
-        <ListItem left="2" title="Follow the quest instruction" />
-        <ListItem left="3" title="Take a photo or check-in" />
-        <ListItem left="4" title="Submit for verification" />
+        <ListItem title="Gather your supplies" />
+        <ListItem title="Follow the quest instruction" />
+        <ListItem title="Take a photo or check-in" />
+        <ListItem title="Submit for verification" />
       </Card>
 
       <Card style={{ marginTop: S.lg, backgroundColor: "#74a6c433" }}>
         <SectionHeader title="Verification Method" subtitle="Upload a photo or check-in at the location to verify completion" />
       </Card>
 
-      <Button label="Mark as Completed" style={{ marginTop: S.lg }} onPress={() => router.back()} />
+      <Button
+        label="Mark as Completed"
+        style={{ marginTop: S.lg }}
+        onPress={() => {
+          const ptsById: Record<string, number> = {
+            walk: 30,
+            "reusable-cup": 15,
+            "plant-based": 25,
+            "led-bulb": 20,
+          };
+          const add = ptsById[id ?? "walk"] ?? 10;
+          setProfile?.((prev) => ({
+            ...prev,
+            points: (prev.points ?? 0) + add,
+            questsCompletedThisWeek: (prev.questsCompletedThisWeek ?? 0) + 1,
+          }));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showToast(`+${add} pts! ${q.title}`);
+          router.back();
+        }}
+      />
       <Button
         label="Share Quest"
         variant="secondary"

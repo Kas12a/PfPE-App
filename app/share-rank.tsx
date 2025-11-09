@@ -1,10 +1,17 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Share, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { useProfile } from "../src/hooks/useProfile";
+import { getWeeklyStats, formatNumber } from "../src/store/stats";
 import { Button, Card, Screen } from "../components/ui";
 import { colors } from "../src/theme/colors";
 import { space } from "../src/theme/spacing";
 
 export default function ShareRankModal() {
+  const { profile } = useProfile();
+  const rank = profile?.rank ?? 7;
+  const points = profile?.points ?? 2450;
+  const w = getWeeklyStats(points);
   return (
     <Screen>
       <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg }}>
@@ -13,25 +20,39 @@ export default function ShareRankModal() {
           <View style={styles.badge}>
             <Text style={styles.badgeEmoji}>🌱</Text>
           </View>
-          <Text style={styles.rank}>#7</Text>
-          <Text style={styles.subtitle}>In Global Rankings!</Text>
+          <Text style={styles.rank}>#{rank}</Text>
+          <Text style={styles.subtitle}>{profile?.name ?? "You"} in Global Rankings!</Text>
 
           <View style={styles.metrics}>
             <View style={styles.metric}>
-              <Text style={styles.metricValue}>2,450</Text>
+              <Text style={styles.metricValue}>{points.toLocaleString()}</Text>
               <Text style={styles.metricLabel}>Points</Text>
             </View>
             <View style={styles.metric}>
-              <Text style={styles.metricValue}>8.4 kg</Text>
+              <Text style={styles.metricValue}>{formatNumber(w.co2SavedKg)} kg</Text>
               <Text style={styles.metricLabel}>CO₂ Saved</Text>
             </View>
             <View style={styles.metric}>
-              <Text style={styles.metricValue}>12 kWh</Text>
+              <Text style={styles.metricValue}>{formatNumber(w.energySavedKwh)} kWh</Text>
               <Text style={styles.metricLabel}>Energy Saved</Text>
             </View>
           </View>
 
-          <Button title="Share" onPress={() => {}} style={{ marginTop: space.lg }} />
+          <Button
+            title="Share"
+            onPress={async () => {
+              try {
+                await Share.share({
+                  message: `I’m #${rank} on the PfPE Global Ranking with ${points.toLocaleString()} pts! 🌱`,
+                  title: "My PfPE Rank",
+                });
+              } finally {
+                router.back();
+              }
+            }}
+            style={{ marginTop: space.lg }}
+          />
+          <Button title="Close" variant="secondary" onPress={() => router.back()} style={{ marginTop: 10 }} />
         </Card>
       </View>
     </Screen>

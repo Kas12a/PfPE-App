@@ -18,5 +18,11 @@ const styles = StyleSheet.create({
     padding: S.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.cardBorder,
+    // soft shadow for nicer elevation
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
 });

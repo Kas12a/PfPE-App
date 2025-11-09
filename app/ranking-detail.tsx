@@ -4,24 +4,30 @@ import { StyleSheet, Text, View } from "react-native";
 import { Button, Card, ListItem, Screen, SectionHeader } from "../components/ui";
 import { colors } from "../src/theme/colors";
 import { space } from "../src/theme/spacing";
+import { useProfile } from "../src/hooks/useProfile";
+import { getWeeklyStats, formatNumber } from "../src/store/stats";
 
 export default function RankingDetailScreen() {
+  const { profile } = useProfile();
+  const pts = profile?.points ?? 2450;
+  const rank = profile?.rank ?? 7;
+  const w = getWeeklyStats(pts);
   return (
     <Screen>
       <SectionHeader title="Ranking" />
       <Card style={styles.banner}>
-        <Text style={styles.rankNo}>#7 YOU</Text>
+        <Text style={styles.rankNo}>#{rank} YOU</Text>
         <View style={styles.kpis}>
           <View style={styles.kpi}>
-            <Text style={styles.kpiValue}>2,450</Text>
+            <Text style={styles.kpiValue}>{pts.toLocaleString()}</Text>
             <Text style={styles.kpiLabel}>Points</Text>
           </View>
           <View style={styles.kpi}>
-            <Text style={styles.kpiValue}>8.4 kg</Text>
+            <Text style={styles.kpiValue}>{formatNumber(w.co2SavedKg)} kg</Text>
             <Text style={styles.kpiLabel}>CO₂ Saved</Text>
           </View>
           <View style={styles.kpi}>
-            <Text style={styles.kpiValue}>12 kWh</Text>
+            <Text style={styles.kpiValue}>{formatNumber(w.energySavedKwh)} kWh</Text>
             <Text style={styles.kpiLabel}>Energy Saved</Text>
           </View>
         </View>

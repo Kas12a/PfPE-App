@@ -12,18 +12,21 @@ import {
 } from "../../components/ui";
 import { colors } from "../../src/theme/colors";
 import { space } from "../../src/theme/spacing";
+import { useProfile } from "../../src/hooks/useProfile";
 
 export default function RewardsScreen() {
-  const currentPoints = 2450;
-  const toNext = 550;
+  const { profile } = useProfile();
+  const currentPoints = profile?.points ?? 2450;
+  const nextMilestone = Math.ceil((currentPoints + 1) / 1000) * 1000; // next 1k block
+  const toNext = Math.max(0, nextMilestone - currentPoints);
 
   const badges = [
-    { title: "Tree Guardian", locked: false },
-    { title: "Plastic-Free Hero", locked: false },
-    { title: "Energy Saver", locked: false },
-    { title: "7-Day Streak", locked: false },
-    { title: "Solar Hero", locked: true },
-    { title: "Eco Warrior", locked: true },
+    { title: "Tree Guardian", icon: "🌳", locked: false },
+    { title: "Plastic-Free Hero", icon: "♻️", locked: false },
+    { title: "Energy Saver", icon: "⚡", locked: false },
+    { title: "7-Day Streak", icon: "🔥", locked: false },
+    { title: "Solar Hero", icon: "☀️", locked: true },
+    { title: "Eco Warrior", icon: "🌎", locked: true },
   ];
 
   const rewards = [
@@ -51,8 +54,10 @@ export default function RewardsScreen() {
       </Card>
 
       {/* Badges */}
-      <SectionHeader title="My Badges" />
-      <BadgeGrid items={badges} />
+      <SectionHeader title="My Badges" subtitle="Keep completing quests to unlock more" />
+      <Card style={styles.badgeCard}>
+        <BadgeGrid items={badges} />
+      </Card>
 
       {/* Available rewards */}
       <SectionHeader title="Available Rewards" />
@@ -64,7 +69,7 @@ export default function RewardsScreen() {
           right={
             <View style={{ alignItems: "flex-end" }}>
               <Text style={styles.costText}>{r.cost} pts</Text>
-              <Button title="Redeem" onPress={() => router.push("/redeem")} />
+              <Button title="Redeem" size="sm" onPress={() => router.push("/redeem")} />
             </View>
           }
         />
@@ -88,6 +93,10 @@ const styles = StyleSheet.create({
   mileRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 10 },
   milePoints: { color: colors.text, fontSize: 34, fontWeight: "900", marginRight: 10 },
   mileLabel: { color: colors.textDim },
+  badgeCard: {
+    marginHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
   costText: { color: colors.textDim, marginBottom: 8 },
   ptsPlus: { color: colors.neon, fontWeight: "900" },
 });

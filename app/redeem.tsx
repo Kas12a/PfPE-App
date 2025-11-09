@@ -1,5 +1,6 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import { Button, Card, Screen } from "../components/ui";
 import { colors } from "../src/theme/colors";
 import { space } from "../src/theme/spacing";
@@ -9,6 +10,9 @@ export default function RedeemModal() {
     <Screen>
       <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg }}>
         <Card style={styles.sheet}>
+          <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={12}>
+            <Text style={{ color: colors.textDim, fontWeight: "700" }}>✕</Text>
+          </Pressable>
           <Text style={styles.app}>Play for Planet Earth</Text>
           <View style={styles.badge}>
             <Text style={styles.badgeEmoji}>🛍️</Text>
@@ -20,7 +24,7 @@ export default function RedeemModal() {
             <Text style={styles.codeText}>ECCO-8F4PBS</Text>
           </View>
 
-          <Button title="Close" onPress={() => {}} style={{ marginTop: space.lg }} />
+          <Button title="Close" onPress={() => router.back()} style={{ marginTop: space.lg }} />
         </Card>
       </View>
     </Screen>
@@ -29,6 +33,7 @@ export default function RedeemModal() {
 
 const styles = StyleSheet.create({
   sheet: { padding: space.lg, alignItems: "center" },
+  closeBtn: { position: "absolute", right: 14, top: 14 },
   app: { color: colors.textDim, marginBottom: 8, fontWeight: "700" },
   badge: {
     width: 72,

@@ -1,16 +1,16 @@
 // src/theme/ThemeProvider.tsx
 import React, { PropsWithChildren, useMemo } from "react";
 import { Appearance, ColorSchemeName } from "react-native";
-import { Colors } from "./colors";
+import { ColorSchemes } from "./colors";
 
 type ThemeContextType = {
   scheme: ColorSchemeName;
-  colors: typeof Colors["dark"];
+  colors: Readonly<Record<string, string>>;
 };
 
 export const ThemeContext = React.createContext<ThemeContextType>({
   scheme: "dark",
-  colors: Colors.dark,
+  colors: ColorSchemes.dark,
 });
 
 export const ThemeProvider = ({ children }: PropsWithChildren) => {
@@ -19,7 +19,7 @@ export const ThemeProvider = ({ children }: PropsWithChildren) => {
   const value = useMemo(
     () => ({
       scheme,
-      colors: scheme === "light" ? Colors.light : Colors.dark,
+      colors: scheme === "light" ? ColorSchemes.light : ColorSchemes.dark,
     }),
     [scheme]
   );

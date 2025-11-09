@@ -1,10 +1,12 @@
-import { colors, ColorToken } from '../../src/theme/colors';
+import { Colors } from '../../src/theme/colors';
+
+type ColorToken = keyof typeof Colors;
 
 export function useThemeColor(token: ColorToken) {
-  return colors[token];
+  return Colors[token];
 }
 
-// Convenience getters
-export const useBg = () => useThemeColor('bg');
+// Convenience getters (map to closest tokens)
+export const useBg = () => useThemeColor('background');
 export const useText = () => useThemeColor('text');
-export const usePrimary = () => useThemeColor('primary');
+export const usePrimary = () => useThemeColor('brand');

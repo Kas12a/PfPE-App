@@ -6,3 +6,7 @@ export const space = {
   xl: 24,
   xxl: 32,
 };
+
+// Alias used across components
+export const S = space;
+export default space;

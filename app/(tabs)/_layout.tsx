@@ -19,7 +19,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="quests"
-        options={{ title: "Quests", tabBarIcon: ({ color, size }) => <Feather name="leaf" color={color} size={size} /> }}
+        options={{ title: "Quests", tabBarIcon: ({ color, size }) => <Ionicons name="leaf-outline" color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="ranking"

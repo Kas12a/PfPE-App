@@ -17,7 +17,7 @@ export default function SectionHeader({ title, subtitle, right, style }: Props) 
         <Text style={styles.title}>{title}</Text>
         {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       </View>
-      {right}
+      {right ? <View style={{ marginLeft: space.md }}>{right}</View> : null}
     </View>
   );
 }

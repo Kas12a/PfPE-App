@@ -2,10 +2,17 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Colors } from "../../src/theme/colors";
 
-export default function ProgressBar({ value = 0 }: { value: number }) {
+type Props = {
+  value?: number;    // 0..1
+  progress?: number; // alias, 0..1
+};
+
+export default function ProgressBar({ value, progress }: Props) {
+  const v = typeof value === "number" ? value : typeof progress === "number" ? progress : 0;
+  const pct = Math.min(100, Math.max(0, v * 100));
   return (
     <View style={styles.track}>
-      <View style={[styles.fill, { width: `${Math.min(100, Math.max(0, value * 100))}%` }]} />
+      <View style={[styles.fill, { width: `${pct}%` }]} />
     </View>
   );
 }
