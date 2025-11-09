@@ -7,17 +7,19 @@ import { S } from "../../src/theme/spacing"; // ✅ spacing tokens
 
 export default function SignIn() {
   const [name, setName] = useState("");
-  const { setProfile } = useProfile(); // assumes your hook exposes setProfile
+  const { save } = useProfile();
 
   const onSubmit = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
     // mock sign-in: set minimal profile and go to tabs
-    setProfile?.({
+    save({
       name: trimmed,
       avatar: null,
       level: 1,
       points: 0,
+      rank: 0,
+      streak: 0,
     });
     router.replace("/(tabs)"); // go to your main app
   };
