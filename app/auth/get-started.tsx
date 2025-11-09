@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -65,6 +66,10 @@ export default function AuthGetStarted() {
 
   const trimmedEmail = email.trim().toLowerCase();
   const formValid = !!trimmedEmail && password.length >= 6;
+  const submitDisabled = !formValid || loading;
+  const openPolicy = (url: string) => {
+    Linking.openURL(url).catch(() => setError('Unable to open link.'));
+  };
 
   const resolvedClientId =
     googleClientConfig.expoClientId ??
@@ -217,15 +222,15 @@ export default function AuthGetStarted() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <View style={[styles.ctaTrack, (!formValid || loading) && styles.ctaTrackDisabled]}>
-            <Pressable style={styles.primaryCta} disabled={!formValid || loading} onPress={handleSubmit}>
+          <View style={[styles.ctaTrack, submitDisabled && styles.ctaTrackDisabled]}>
+            <Pressable style={styles.primaryCta} disabled={submitDisabled} onPress={handleSubmit}>
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.primaryCtaText}>{mode === 'signup' ? 'Create account' : 'Continue'}</Text>
               )}
             </Pressable>
-            <Pressable style={styles.ctaCircle} disabled={!formValid || loading} onPress={handleSubmit}>
+            <Pressable style={styles.ctaCircle} disabled={submitDisabled} onPress={handleSubmit}>
               {loading ? <ActivityIndicator color="#141B34" /> : <Feather name="arrow-up-right" size={20} color="#141B34" />}
             </Pressable>
           </View>
@@ -252,8 +257,15 @@ export default function AuthGetStarted() {
           </Pressable>
 
           <Text style={styles.legal}>
-            By continuing, you agree to our <Text style={styles.legalHighlight}>privacy policy</Text> and{' '}
-            <Text style={styles.legalHighlight}>terms & conditions.</Text>
+            By continuing, you agree to our{' '}
+            <Text style={styles.legalLink} onPress={() => openPolicy('https://playearth.co.uk/privacy')}>
+              privacy policy
+            </Text>{' '}
+            and{' '}
+            <Text style={styles.legalLink} onPress={() => openPolicy('https://playearth.co.uk/terms')}>
+              terms & conditions
+            </Text>
+            .
           </Text>
         </KeyboardAvoidingView>
       </OnboardingScreenShell>
@@ -422,7 +434,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: space.lg,
   },
-  legalHighlight: {
+  legalLink: {
     color: '#DBF262',
+    textDecorationLine: 'underline',
   },
 });

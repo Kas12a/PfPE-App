@@ -5,14 +5,15 @@ import { Card, ProgressBar, Screen, SectionHeader } from "../../components/ui";
 import { colors, space } from "../../src/theme/colors";
 import { useProfile } from "../../src/hooks/useProfile";
 import { getWeeklyStats } from "../../src/store/stats";
-import { dailyQuests } from "../../src/data/quests";
 import { router } from "expo-router";
+import { useQuests } from "../../src/hooks/useQuests";
 
 const fallbackAvatar = { uri: "https://placehold.co/100x100/1f2f27/ffffff?text=Leaf" };
 const heroImage = { uri: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=80" };
 
 export default function HomeScreen() {
   const { profile } = useProfile();
+  const { dailyQuests } = useQuests();
   const pts = profile?.points ?? 0;
   const weeklyDone = profile?.questsCompletedThisWeek ?? 0;
   const weeklyTarget = profile?.weeklyTarget ?? 15;
@@ -20,7 +21,7 @@ export default function HomeScreen() {
   const name = profile?.name?.trim() || "Explorer";
   const stats = getWeeklyStats(pts);
   const emptyState = pts === 0 && weeklyDone === 0;
-  const featuredQuests = useMemo(() => dailyQuests.slice(0, 3), []);
+  const featuredQuests = useMemo(() => dailyQuests.slice(0, 3), [dailyQuests]);
 
   return (
     <Screen contentContainerStyle={{ padding: 0 }}>

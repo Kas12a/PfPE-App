@@ -3,13 +3,15 @@ import { Stack } from "expo-router";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 import { ProfileProvider } from "../src/context/ProfileProvider";
 import { ToastProvider } from "../src/context/ToastProvider";
+import { QuestProvider } from "../src/context/QuestProvider";
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
       <ToastProvider>
         <ProfileProvider>
-          <Stack screenOptions={{ headerShown: false }}>
+          <QuestProvider>
+            <Stack screenOptions={{ headerShown: false }}>
           {/* (tabs) layout remains as-is */}
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Ranking stack lives under /ranking; child routes are handled there */}
@@ -22,7 +24,8 @@ export default function RootLayout() {
           name="redeem"
           options={{ headerShown: false, presentation: "transparentModal" }}
         />
-          </Stack>
+            </Stack>
+          </QuestProvider>
         </ProfileProvider>
       </ToastProvider>
     </ThemeProvider>

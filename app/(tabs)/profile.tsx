@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Image, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Image, Linking, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { Button, Card, ListItem, ModalSheet, Screen, SectionHeader } from "../../components/ui";
 import { useRouter } from "expo-router";
 import { colors } from "../../src/theme/colors";
@@ -21,6 +21,10 @@ export default function ProfileScreen() {
     null | { title: string; body: string; primaryText?: string; onPrimary?: () => void | Promise<void> }
   >(null);
   const { showToast } = useToast();
+
+  const openLink = (url: string) => {
+    Linking.openURL(url).catch(() => showToast("Unable to open link"));
+  };
 
   const openSheet = (type: string) => {
     switch (type) {
@@ -115,6 +119,10 @@ export default function ProfileScreen() {
       <ListItem title="Help Center" onPress={() => openSheet('help')} />
       <ListItem title="Contact Us" onPress={() => openSheet('contact')} />
       <ListItem title="About" onPress={() => openSheet('about')} />
+
+      <SectionHeader title="Legal" />
+      <ListItem title="Privacy Policy" onPress={() => openLink("https://playearth.co.uk/privacy")} />
+      <ListItem title="Terms & Conditions" onPress={() => openLink("https://playearth.co.uk/terms")} />
 
       {/* Edit profile */}
       <SectionHeader title="Edit Profile" />

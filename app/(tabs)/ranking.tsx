@@ -1,11 +1,12 @@
 import { router } from "expo-router";
 import React, { useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Button, Card, ListItem, ProgressBar, Screen, SectionHeader } from "../../components/ui";
 import { colors } from "../../src/theme/colors";
 import { space } from "../../src/theme/spacing";
 import { useProfile } from "../../src/hooks/useProfile";
 import { generateLeagueStandings, getLeagueTier } from "../../src/data/leagues";
+import { useLeagueStandings } from "../../src/hooks/useLeague";
 
 function daysUntilReset() {
   const today = new Date();
@@ -22,9 +23,10 @@ export default function RankingScreen() {
   const userName = profile?.name?.trim() || "You";
   const userPoints = profile?.points ?? 0;
   const userRank = profile?.rank ?? 0;
+  const { members: leagueMembers, loading } = useLeagueStandings(profile?.league);
 
   const standings = useMemo<StandingRow[]>(() => {
-    const base = generateLeagueStandings(profile?.league);
+    const base = leagueMembers.length ? leagueMembers : generateLeagueStandings(profile?.league);
     const mapped = base.map<StandingRow>((member) => {
       if (member.name.toLowerCase().includes("you")) {
         return { ...member, name: `${userName} (YOU)`, points: userPoints, isYou: true };
@@ -36,7 +38,7 @@ export default function RankingScreen() {
       mapped.push({ id: "you", name: `${userName} (YOU)`, points: userPoints, rank: userRank || mapped.length + 1, isYou: true });
     }
     return mapped.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
-  }, [profile?.league, userName, userPoints, userRank]);
+  }, [profile?.league, userName, userPoints, userRank, leagueMembers]);
 
   return (
     <Screen>
@@ -70,6 +72,12 @@ export default function RankingScreen() {
       </Card>
 
       <SectionHeader title="League Standings" subtitle="Updated hourly" />
+      {loading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={colors.neon} />
+          <Text style={styles.loadingText}>Syncing your league…</Text>
+        </View>
+      ) : null}
       {standings.map((member) => (
         <ListItem
           key={member.id}
@@ -102,6 +110,8 @@ const styles = StyleSheet.create({
   leagueMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: 12 },
   leagueMetaText: { color: colors.text, fontWeight: "600" },
   resetText: { color: colors.textDim, marginTop: 10 },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: space.lg, marginBottom: space.md },
+  loadingText: { color: colors.textDim },
   pointsRight: { color: colors.neon, fontWeight: "900" },
   viewBtn: { marginTop: 6, color: colors.textDim, fontSize: 12 },
 });

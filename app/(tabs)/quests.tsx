@@ -1,50 +1,76 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import * as Haptics from "expo-haptics";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Button, Card, ProgressBar, Screen, SectionHeader } from "../../components/ui";
 import { colors } from "../../src/theme/colors";
 import { space } from "../../src/theme/spacing";
 import { useProfile } from "../../src/hooks/useProfile";
 import { useToast } from "../../src/hooks/useToast";
-import { dailyQuests, evergreenQuests, questFilters, QuestDefinition } from "../../src/data/quests";
+import { questFilters, QuestDefinition } from "../../src/data/quests";
+import { useQuests } from "../../src/hooks/useQuests";
 
 const FILTERS = ["All", ...questFilters];
-type QuestState = "todo" | "proof" | "completed";
 
 export default function QuestsScreen() {
   const [active, setActive] = useState("All");
-  const [proofs, setProofs] = useState<Record<string, boolean>>({});
-  const [status, setStatus] = useState<Record<string, QuestState>>({});
-  const { setProfile, profile } = useProfile();
+  const [draftProofs, setDraftProofs] = useState<Record<string, string>>({});
+  const [uploadingQuest, setUploadingQuest] = useState<string | null>(null);
+  const { profile } = useProfile();
   const { showToast } = useToast();
+  const { dailyQuests, evergreenQuests, completions, loading, submitProof, completeQuest } = useQuests();
 
-  const allQuests = useMemo(() => [...dailyQuests, ...evergreenQuests], []);
-  const filtered = active === "All" ? allQuests : allQuests.filter((q) => q.category === active);
-
-  const handleEvidence = (quest: QuestDefinition) => {
-    setProofs((prev) => ({ ...prev, [quest.id]: true }));
-    setStatus((prev) => ({ ...prev, [quest.id]: "proof" }));
-    showToast(quest.type === "photo" ? "Photo saved (mock)" : "Video saved (mock)");
-  };
-
-  const handleComplete = (quest: QuestDefinition) => {
-    if (quest.type !== "check" && !proofs[quest.id]) {
-      showToast("Add evidence first.");
-      return;
-    }
-    setStatus((prev) => ({ ...prev, [quest.id]: "completed" }));
-    setProfile?.((prev) => ({
-      ...prev,
-      points: (prev.points ?? 0) + quest.points,
-      questsCompletedThisWeek: (prev.questsCompletedThisWeek ?? 0) + 1,
-    }));
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    showToast(`+${quest.points} pts added`);
-  };
+  const allQuests = useMemo(() => [...dailyQuests, ...evergreenQuests], [dailyQuests, evergreenQuests]);
+  const filtered = useMemo(
+    () => (active === "All" ? allQuests : allQuests.filter((q) => q.category === active)),
+    [active, allQuests],
+  );
 
   const weeklyProgress = {
     done: profile?.questsCompletedThisWeek ?? 0,
     target: profile?.weeklyTarget ?? 15,
+  };
+
+  const handleProofUpload = async (quest: QuestDefinition) => {
+    try {
+      setUploadingQuest(quest.id);
+      const picker = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: quest.type === "photo" ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
+        quality: 0.7,
+      });
+      if (picker.canceled) {
+        setUploadingQuest(null);
+        return;
+      }
+      const asset = picker.assets?.[0];
+      if (!asset?.uri) throw new Error("Unable to read file.");
+      const mimeType = asset.mimeType ?? (quest.type === "photo" ? "image/jpeg" : "video/mp4");
+      const url = await submitProof(quest, asset.uri, mimeType);
+      setDraftProofs((prev) => ({ ...prev, [quest.id]: url }));
+      showToast("Proof uploaded");
+    } catch (error: any) {
+      showToast(error?.message ?? "Could not upload proof.");
+    } finally {
+      setUploadingQuest(null);
+    }
+  };
+
+  const handleComplete = async (quest: QuestDefinition) => {
+    if (completions[quest.id]) {
+      showToast("Already submitted.");
+      return;
+    }
+    const proofUrl = quest.type === "check" ? undefined : draftProofs[quest.id];
+    try {
+      await completeQuest(quest, proofUrl);
+      setDraftProofs((prev) => {
+        const next = { ...prev };
+        delete next[quest.id];
+        return next;
+      });
+      showToast(quest.type === "check" ? "Quest completed!" : "Submitted for review 🚀");
+    } catch (error: any) {
+      showToast(error?.message ?? "Unable to submit quest.");
+    }
   };
 
   return (
@@ -70,11 +96,20 @@ export default function QuestsScreen() {
         <ProgressBar progress={weeklyProgress.target === 0 ? 0 : weeklyProgress.done / weeklyProgress.target} />
       </Card>
 
-      <SectionHeader title="Available Today" subtitle="Some quests need proof, some are instant" />
+      <SectionHeader title="Available Today" subtitle="Some quests need proof, others are instant" />
+      {loading && filtered.length === 0 ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={colors.neon} />
+          <Text style={styles.loadingText}>Loading quests…</Text>
+        </View>
+      ) : null}
       {filtered.map((quest) => {
-        const currentState = status[quest.id] ?? "todo";
+        const completion = completions[quest.id];
         const needsProof = quest.type !== "check";
-        const proofAdded = Boolean(proofs[quest.id]);
+        const proofAdded = Boolean(draftProofs[quest.id] || completion?.proofUrl);
+        const isUploading = uploadingQuest === quest.id;
+        const disabled =
+          Boolean(completion) || (needsProof && !proofAdded);
         return (
           <Card key={quest.id} style={styles.questCard}>
             <View style={styles.questHeader}>
@@ -99,21 +134,36 @@ export default function QuestsScreen() {
             <View style={styles.buttonRow}>
               {needsProof ? (
                 <Button
-                  title={proofAdded ? "Proof added" : quest.requiresEvidenceLabel ?? "Add proof"}
+                  title={
+                    completion
+                      ? completion.status === "pending"
+                        ? "Pending review"
+                        : "Approved"
+                      : proofAdded
+                        ? "Proof added"
+                        : quest.requiresEvidenceLabel ?? "Add proof"
+                  }
                   variant={proofAdded ? "secondary" : "primary"}
                   size="sm"
-                  onPress={() => handleEvidence(quest)}
+                  onPress={() => handleProofUpload(quest)}
+                  disabled={Boolean(completion)}
                   style={styles.button}
                 />
               ) : null}
-              <Button
-                title={currentState === "completed" ? "Completed" : "Mark complete"}
-                size="sm"
-                variant={currentState === "completed" ? "secondary" : "primary"}
-                disabled={currentState === "completed"}
-                onPress={() => handleComplete(quest)}
-                style={styles.button}
-              />
+              {isUploading ? (
+                <View style={[styles.button, styles.uploading]}>
+                  <ActivityIndicator color={colors.background} />
+                </View>
+              ) : (
+                <Button
+                  title={completion ? (completion.status === "pending" ? "Submitted" : "Completed") : "Mark complete"}
+                  size="sm"
+                  variant={completion ? "secondary" : "primary"}
+                  disabled={disabled}
+                  onPress={() => handleComplete(quest)}
+                  style={styles.button}
+                />
+              )}
             </View>
           </Card>
         );
@@ -150,6 +200,8 @@ const styles = StyleSheet.create({
   weekCard: { marginHorizontal: space.lg, padding: space.lg },
   weekTitle: { color: colors.text, fontWeight: "800", fontSize: 16, marginBottom: 6 },
   weekSub: { color: colors.textDim, marginBottom: 10 },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: space.lg, marginBottom: space.md },
+  loadingText: { color: colors.textDim },
   questCard: { marginHorizontal: space.lg, marginBottom: space.md, padding: space.lg },
   questHeader: { flexDirection: "row", justifyContent: "space-between", gap: space.md },
   questTitle: { color: colors.text, fontWeight: "800", fontSize: 16 },
@@ -178,4 +230,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   button: { flex: 1 },
+  uploading: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
