@@ -1,24 +1,25 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+// app/_layout.tsx
+import { Stack } from "expo-router";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+    <ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* (tabs) layout remains as-is */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        {/* Ranking detail lives outside tabs */}
+        <Stack.Screen name="ranking/[id]" options={{ headerShown: false }} />
+        {/* Share + Redeem as true modals – NO bottom tabs */}
+        <Stack.Screen
+          name="share-rank"
+          options={{ headerShown: false, presentation: "transparentModal" }}
+        />
+        <Stack.Screen
+          name="redeem"
+          options={{ headerShown: false, presentation: "transparentModal" }}
+        />
       </Stack>
-      <StatusBar style="auto" />
     </ThemeProvider>
   );
 }

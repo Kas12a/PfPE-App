@@ -1,34 +1,37 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { Colors } from "../../src/theme/colors";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: { backgroundColor: "#0D1A17", borderTopColor: "rgba(255,255,255,0.06)" },
+        tabBarActiveTintColor: Colors.tabIconActive,
+        tabBarInactiveTintColor: Colors.tabIcon,
+      }}
+    >
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
+        options={{ title: "Home", tabBarIcon: ({ color, size }) => <Feather name="home" color={color} size={size} /> }}
       />
       <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
+        name="quests"
+        options={{ title: "Quests", tabBarIcon: ({ color, size }) => <Feather name="leaf" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="ranking"
+        options={{ title: "Ranking", tabBarIcon: ({ color, size }) => <Feather name="award" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="rewards"
+        options={{ title: "Rewards", tabBarIcon: ({ color, size }) => <Feather name="gift" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{ title: "Profile", tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" color={color} size={size} /> }}
       />
     </Tabs>
   );

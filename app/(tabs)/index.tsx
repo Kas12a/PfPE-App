@@ -1,98 +1,130 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Image, StyleSheet, View } from "react-native";
+import { Button, Card, ListItem, ProgressBar, Screen, Section, SectionHeader } from "../../components/ui";
+import { Colors } from "../../src/theme/colors";
+import { S } from "../../src/theme/spacing";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+
+const LEAF =
+  "https://images.unsplash.com/photo-1545243424-0ce743321e11?q=80&w=1200";
+
+const todaysQuests = [
+  { icon: "👟", title: "Walk to work", sub: "1.2 kg CO₂ saved", pts: "+30 pts" },
+  {
+    icon: "☕",
+    title: "Using reusable coffee cup",
+    sub: "0.3 kg waste avoided",
+    pts: "+15 pts",
+  },
+  { icon: "🥗", title: "Plant-based lunch", sub: "2.5 kg CO₂ saved", pts: "+25 pts" },
+];
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <Screen
+      title="Hi, Sara 👋"
+      subtitle="Let’s make today count"
+    >
+      {/* points card with leaf bg + strike badge */}
+      <Card style={styles.pointsCard}>
+        <Image source={{ uri: LEAF }} style={styles.pointsImg} resizeMode="cover" />
+        <View style={styles.pointsOverlay} />
+        <View style={styles.pointsContent}>
+          <SectionHeader title="Your Eco Points" />
+          <View style={{ height: S.sm }} />
+          <SectionHeader title="2,450" subtitle="This Week" />
+          <View style={{ height: S.xs }} />
+          <SectionHeader title="+320 pts" subtitle="Rank" />
+          <View style={{ flex: 1 }} />
+          <Button compact label="🔥  7 Day Strike" />
+        </View>
+      </Card>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <SectionHeader
+        title="Today’s Quests"
+        rightText="View All"
+        style={{ marginTop: S.lg }}
+      />
+
+      <Section>
+        {todaysQuests.map((q, i) => (
+          <Card key={i} style={{ marginTop: i === 0 ? 0 : S.md }}>
+            <ListItem
+              left={q.icon}
+              title={q.title}
+              subtitle={q.sub}
+              rightLabel={q.pts}
+            />
+          </Card>
+        ))}
+      </Section>
+
+      {/* weekly challenge */}
+      <Card style={{ marginTop: S.lg, backgroundColor: Colors.cardAlt }}>
+        <SectionHeader title="⚡ Weekly Challenge" subtitle="Complete 15 quests this week" />
+        <View style={{ height: S.md }} />
+        <SectionHeader title="11 of 15 quests" subtitle="73%" />
+        <ProgressBar progress={0.73} style={{ marginTop: S.sm }} />
+        <View style={{ height: S.md }} />
+        <Button compact variant="secondary" label="🏅  Reward: Eco Hero Badge • +100 points" />
+      </Card>
+
+      {/* Impact grid */}
+      <Card style={{ marginTop: S.lg }}>
+        <SectionHeader title="🕒 Your Impact This Week" />
+        <View style={styles.impactGrid}>
+          <ImpactBox value="8.4 kg" label="CO₂ Saved" tint="green" />
+          <ImpactBox value="2.1 kg" label="Waste Avoided" tint="blue" />
+          <ImpactBox value="12 kWh" label="Energy Saved" tint="yellow" />
+          <ImpactBox value="5.5 hrs" label="Active Hours" tint="purple" />
+        </View>
+      </Card>
+
+      <View style={{ height: S.xl }} />
+    </Screen>
+  );
+}
+
+function ImpactBox({
+  value,
+  label,
+  tint,
+}: {
+  value: string;
+  label: string;
+  tint: "green" | "blue" | "yellow" | "purple";
+}) {
+  return (
+    <View style={[styles.impactBox, styles[`tint_${tint}` as const]]}>
+      <SectionHeader title={value} subtitle={label} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  pointsCard: { padding: 0, overflow: "hidden" },
+  pointsImg: { width: "100%", height: 140 },
+  pointsOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)" },
+  pointsContent: {
+    ...StyleSheet.absoluteFillObject,
+    padding: S.lg,
+    justifyContent: "space-between",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  impactGrid: {
+    marginTop: S.lg,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: S.md,
+    justifyContent: "space-between",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  impactBox: {
+    width: "48%",
+    borderRadius: 16,
+    paddingVertical: S.lg,
+    paddingHorizontal: S.md,
+    backgroundColor: Colors.cardAlt,
   },
+  tint_green: { borderColor: "#53d18a33", borderWidth: 1 },
+  tint_blue: { borderColor: "#7cb7ff33", borderWidth: 1 },
+  tint_yellow: { borderColor: "#ffd24d33", borderWidth: 1 },
+  tint_purple: { borderColor: "#b08cff33", borderWidth: 1 },
 });
