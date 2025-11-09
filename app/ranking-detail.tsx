@@ -1,39 +1,72 @@
+import { router } from "expo-router";
 import React from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { Button, Card, ListItem, Screen, SectionHeader } from "../components/ui";
+import { colors } from "../src/theme/colors";
+import { space } from "../src/theme/spacing";
 
-import Card from "../components/ui/Card";
-import NeonButton from "../components/ui/NeonButton";
-import Screen from "../components/ui/Screen";
-import StatPill from "../components/ui/StatPill";
-
-import { useProfile } from "../src/context/ProfileProvider";
-import { Colors } from "../src/theme/colors";
-import { S } from "../src/theme/spacing";
-import { Type } from "../src/theme/typography";
-
-
-export default function RankingDetail() {
-  const { profile } = useProfile();
+export default function RankingDetailScreen() {
   return (
     <Screen>
-      <Text style={[Type.caption as any, { color: Colors.textMuted, marginTop: S.xl }]}>Back</Text>
-      <Card elevated>
-        <Text style={[Type.h2, { color: Colors.text }]}>#{profile.rank} YOU</Text>
-
-        <View style={{ flexDirection: "row", gap: S.sm, marginTop: S.lg }}>
-          <StatPill label="Points" value={profile.points.toLocaleString()} color={Colors.info} />
-          <StatPill label="CO₂ Saved" value="8.4 kg" color={Colors.success} />
-          <StatPill label="Energy Saved" value="12 kWh" color={Colors.warning} />
+      <SectionHeader title="Ranking" />
+      <Card style={styles.banner}>
+        <Text style={styles.rankNo}>#7 YOU</Text>
+        <View style={styles.kpis}>
+          <View style={styles.kpi}>
+            <Text style={styles.kpiValue}>2,450</Text>
+            <Text style={styles.kpiLabel}>Points</Text>
+          </View>
+          <View style={styles.kpi}>
+            <Text style={styles.kpiValue}>8.4 kg</Text>
+            <Text style={styles.kpiLabel}>CO₂ Saved</Text>
+          </View>
+          <View style={styles.kpi}>
+            <Text style={styles.kpiValue}>12 kWh</Text>
+            <Text style={styles.kpiLabel}>Energy Saved</Text>
+          </View>
         </View>
       </Card>
 
-      <Card>
-        <Text style={[Type.title, { color: Colors.text, marginBottom: S.sm }]}>Recent Activities</Text>
-        <Text style={[Type.body, { color: Colors.text }]}>Plant a tree — <Text style={{ color: Colors.neon }}>Completed</Text></Text>
-        <Text style={[Type.body, { color: Colors.text, marginTop: 6 }]}>Walk to work — <Text style={{ color: Colors.neon }}>Completed</Text></Text>
-      </Card>
+      <View style={styles.quick}>
+        <Card style={styles.quickBox}>
+          <Text style={styles.quickValue}>24</Text>
+          <Text style={styles.quickLabel}>Quests</Text>
+        </Card>
+        <Card style={styles.quickBox}>
+          <Text style={styles.quickValue}>7</Text>
+          <Text style={styles.quickLabel}>Day Streak</Text>
+        </Card>
+        <Card style={styles.quickBox}>
+          <Text style={styles.quickValue}>2</Text>
+          <Text style={styles.quickLabel}>Rewards</Text>
+        </Card>
+      </View>
 
-      <NeonButton title="Share My Rank" onPress={() => { /* share logic */ }} />
+      <SectionHeader title="Recent Activities" />
+      <ListItem title="Plant a tree" subtitle="Completed" />
+      <ListItem title="Walk to work" subtitle="Completed" />
+      <ListItem title="Beach cleanup" subtitle="Completed" />
+
+      <Button
+        title="Share My Rank"
+        onPress={() => router.push("/share-rank")}
+        style={{ marginHorizontal: space.lg, marginTop: space.xl }}
+      />
+
+      <View style={{ height: space.xl }} />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  banner: { marginHorizontal: space.lg, padding: space.lg },
+  rankNo: { color: colors.text, fontSize: 22, fontWeight: "800", marginBottom: 12 },
+  kpis: { flexDirection: "row", justifyContent: "space-between" },
+  kpi: { alignItems: "center", flex: 1 },
+  kpiValue: { color: colors.text, fontWeight: "900", fontSize: 20 },
+  kpiLabel: { color: colors.textDim, marginTop: 4 },
+  quick: { flexDirection: "row", paddingHorizontal: space.lg, marginTop: space.md },
+  quickBox: { flex: 1, marginHorizontal: 6, paddingVertical: 16, alignItems: "center" },
+  quickValue: { color: colors.text, fontWeight: "900", fontSize: 18 },
+  quickLabel: { color: colors.textDim, marginTop: 4 },
+});

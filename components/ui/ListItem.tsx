@@ -1,87 +1,42 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
-import { Colors } from "../../src/theme/colors";
-import { shadows } from "../../src/theme/shadows";
-import { S } from "../../src/theme/spacing";
+import { Image, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { colors } from "../../src/theme/colors";
+import { space } from "../../src/theme/spacing";
 
 type Props = {
+  icon?: any;
   title: string;
   subtitle?: string;
-  left?: React.ReactNode;        // e.g. emoji or icon
-  right?: React.ReactNode;       // e.g. “Completed”, points, chevron
-  onPress?: () => void;
-  disabled?: boolean;
+  right?: React.ReactNode;
   style?: ViewStyle;
-  rounded?: "lg" | "xl";         // visual tweak per Figma
 };
 
-function ListItem({
-  title,
-  subtitle,
-  left,
-  right,
-  onPress,
-  disabled,
-  style,
-  rounded = "xl",
-}: Props) {
-  const radius = rounded === "xl" ? 18 : 14;
-
+/** Simple row card used for quests & recent activities */
+export default function ListItem({ icon, title, subtitle, right, style }: Props) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled || !onPress}
-      style={({ pressed }) => [
-        styles.container,
-        { borderRadius: radius, opacity: pressed ? 0.96 : 1 },
-        style,
-      ]}
-    >
-      {left ? <View style={[styles.left, { borderRadius: radius - 8 }]}>{left}</View> : null}
-
-      <View style={styles.center}>
-        <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        {subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
-        ) : null}
+    <View style={[styles.row, style]}>
+      {icon && <Image source={icon} style={styles.icon} />}
+      <View style={{ flex: 1 }}>
+        <Text style={styles.title}>{title}</Text>
+        {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       </View>
-
-      {right ? <View style={styles.right}>{right}</View> : null}
-    </Pressable>
+      {right}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: S.lg,
-    paddingVertical: S.md,
-    backgroundColor: Colors.card,        // fits our dark theme
-    ...shadows.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.cardBorder,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    marginHorizontal: space.lg,
+    marginBottom: space.md,
   },
-  left: {
-    width: 56,
-    height: 56,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.cardMuted,
-    marginRight: S.md,
-  },
-  center: { flex: 1 },
-  title: {
-    color: Colors.text,
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  subtitle: {
-    marginTop: 4,
-    color: Colors.textMuted,
-    fontSize: 14,
-  },
-  right: { marginLeft: S.md, alignItems: "flex-end", justifyContent: "center" },
+  icon: { width: 36, height: 36, borderRadius: 8, marginRight: space.md },
+  title: { color: colors.text, fontWeight: "600", fontSize: 16 },
+  subtitle: { color: colors.textDim, marginTop: 2 },
 });
-
-export default ListItem;
