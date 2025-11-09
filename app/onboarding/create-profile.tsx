@@ -14,7 +14,14 @@ export default function CreateProfile() {
   const { save } = useProfile();
 
   const handleContinue = async () => {
-    await save({ name: name.trim(), avatar });
+    await save({
+      name: name.trim(),
+      avatar,
+      level: 1,
+      points: 0,
+      rank: 0,
+      streak: 0,
+    });
     router.replace('/onboarding/interests'); // continue onboarding
   };
 

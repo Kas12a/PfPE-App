@@ -6,7 +6,7 @@ import NeonButton from "../components/ui/NeonButton";
 import Screen from "../components/ui/Screen";
 import StatPill from "../components/ui/StatPill";
 
-import { useProfile } from "../src/context/ProfileProvider";
+import { useProfile } from "../src/hooks/useProfile";
 import { Colors } from "../src/theme/colors";
 import { S } from "../src/theme/spacing";
 import { Type } from "../src/theme/typography";

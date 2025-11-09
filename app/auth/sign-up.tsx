@@ -7,17 +7,19 @@ import { S } from "../../src/theme/spacing"; // ✅ spacing tokens
 
 export default function SignUp() {
   const [name, setName] = useState("");
-  const { setProfile } = useProfile();
+  const { save } = useProfile();
 
   const onContinue = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
 
-    setProfile?.({
+    save({
       name: trimmed,
       avatar: null,
       level: 1,
       points: 0,
+      rank: 0,
+      streak: 0,
     });
 
     router.replace("/(tabs)"); // navigate to main tabs after signup
