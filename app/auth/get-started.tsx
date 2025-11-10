@@ -258,9 +258,9 @@ export default function AuthGetStarted() {
           </View>
 
           <Pressable
-            style={[styles.googleButton, (!request || googleLoading) && styles.googleDisabled]}
+            style={[styles.googleButton, (!_request || googleLoading) && styles.googleDisabled]}
             onPress={handleGooglePress}
-            disabled={!request || googleLoading}
+            disabled={!_request || googleLoading}
           >
             {googleLoading ? (
               <ActivityIndicator color="#051A23" />

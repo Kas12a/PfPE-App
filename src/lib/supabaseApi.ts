@@ -1,6 +1,7 @@
 import supabase from './supabase';
 
 export type CompletionStatus = 'pending' | 'approved' | 'rejected';
+const PROOF_BUCKET = process.env.EXPO_PUBLIC_SUPABASE_PROOF_BUCKET ?? 'proofs';
 
 export interface Quest {
   id: string;
@@ -138,9 +139,39 @@ export async function fetchCompletions(): Promise<Completion[]> {
   return data ?? [];
 }
 
-export async function uploadQuestProof(fileUri: string, _mimeType?: string): Promise<string> {
-  // Placeholder stub: returning the local uri keeps parity with existing flows until Supabase Storage is wired up.
-  return fileUri;
+function inferExtension(mimeType?: string | null) {
+  if (!mimeType) return '';
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return '.jpg';
+  if (mimeType.includes('png')) return '.png';
+  if (mimeType.includes('gif')) return '.gif';
+  if (mimeType.includes('mp4')) return '.mp4';
+  if (mimeType.includes('quicktime')) return '.mov';
+  return '';
+}
+
+export async function uploadQuestProof(fileUri: string, mimeType?: string | null): Promise<string> {
+  const user = await requireAuthUser();
+  const response = await fetch(fileUri);
+  if (!response.ok) {
+    throw new Error('Unable to read proof file.');
+  }
+  const blob = await response.blob();
+  const extension = inferExtension(mimeType);
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${extension}`;
+  const objectPath = `${user.id}/${filename}`;
+  const { error } = await supabase.storage
+    .from(PROOF_BUCKET)
+    .upload(objectPath, blob, { contentType: mimeType ?? 'application/octet-stream', upsert: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const { data } = supabase.storage.from(PROOF_BUCKET).getPublicUrl(objectPath);
+  if (!data?.publicUrl) {
+    throw new Error('Proof uploaded but URL could not be generated.');
+  }
+  return data.publicUrl;
 }
 
 export async function submitCompletion({

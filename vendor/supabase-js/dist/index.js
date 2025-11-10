@@ -175,6 +175,7 @@ function createClient(url, anonKey) {
   const baseUrl = normalizeBaseUrl(url);
   const restBase = `${baseUrl}/rest/v1`;
   const authBase = `${baseUrl}/auth/v1`;
+  const storageBase = `${baseUrl}/storage/v1`;
 
   let session = null;
 
@@ -225,6 +226,16 @@ function createClient(url, anonKey) {
   const requestAuth = (path, options) => {
     const endpoint = `${authBase}/${path}`;
     return request(endpoint, options);
+  };
+
+  const requestStorage = (path, options) => {
+    const endpoint = `${storageBase}/${path}`;
+    return request(endpoint, options);
+  };
+
+  const buildPublicStorageUrl = (bucket, path) => {
+    const cleanPath = path.replace(/^\/+/, '');
+    return `${storageBase}/object/public/${bucket}/${cleanPath}`;
   };
 
   const auth = {
@@ -355,9 +366,53 @@ function createClient(url, anonKey) {
     return new PostgrestQueryBuilder(requestRest, table);
   };
 
+  const storage = {
+    from(bucket) {
+      if (!bucket || typeof bucket !== 'string') {
+        throw new Error('Storage bucket must be a non-empty string.');
+      }
+      const bucketName = bucket;
+      return {
+        async upload(path, file, options = {}) {
+          if (!path || typeof path !== 'string') {
+            throw new Error('Storage upload path must be provided.');
+          }
+          const cleanPath = path.replace(/^\/+/, '');
+          const query = options.upsert ? '?upsert=true' : '';
+          const headers = {};
+          if (options.contentType) {
+            headers['Content-Type'] = options.contentType;
+          }
+          const { error } = await requestStorage(`object/${bucketName}/${cleanPath}${query}`, {
+            method: 'POST',
+            headers,
+            body: file,
+          });
+
+          if (error) {
+            return { data: null, error };
+          }
+
+          return { data: { path: cleanPath }, error: null };
+        },
+
+        getPublicUrl(path) {
+          if (!path || typeof path !== 'string') {
+            return { data: null, error: buildError('Storage path must be provided.') };
+          }
+          return {
+            data: { publicUrl: buildPublicStorageUrl(bucketName, path) },
+            error: null,
+          };
+        },
+      };
+    },
+  };
+
   return {
     auth,
     from,
+    storage,
   };
 }
 

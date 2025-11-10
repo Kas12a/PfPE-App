@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { fetchLeagueLeaderboard } from "../lib/supabaseApi";
 import { generateLeagueStandings } from "../data/leagues";
 
+const LEAGUE_REFRESH_MS = 60_000;
+
 export type LeagueMember = {
   id: string;
   name: string;
@@ -17,12 +19,15 @@ export function useLeagueStandings(leagueId?: string | null) {
 
   useEffect(() => {
     let cancelled = false;
-    const loadStandings = async () => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const loadStandings = async (withSpinner = false) => {
       if (!leagueId) {
         setMembers(generateLeagueStandings("sprout"));
         return;
       }
-      setLoading(true);
+      if (withSpinner) {
+        setLoading(true);
+      }
       try {
         const rows = await fetchLeagueLeaderboard(leagueId);
         if (cancelled) return;
@@ -43,14 +48,16 @@ export function useLeagueStandings(leagueId?: string | null) {
           setMembers(generateLeagueStandings(leagueId ?? "sprout"));
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && withSpinner) {
           setLoading(false);
         }
       }
     };
-    loadStandings();
+    loadStandings(true);
+    interval = setInterval(() => loadStandings(false), LEAGUE_REFRESH_MS);
     return () => {
       cancelled = true;
+      if (interval) clearInterval(interval);
     };
   }, [leagueId]);
 

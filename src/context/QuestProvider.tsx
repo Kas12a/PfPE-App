@@ -37,6 +37,8 @@ type QuestCtx = {
 };
 
 const QuestContext = createContext<QuestCtx | null>(null);
+const QUEST_REFRESH_MS = 60_000;
+const COMPLETION_REFRESH_MS = 30_000;
 
 export function QuestProvider({ children }: PropsWithChildren) {
   const { profile, setProfile } = useProfile();
@@ -48,8 +50,11 @@ export function QuestProvider({ children }: PropsWithChildren) {
   // Fetch quests from Supabase; fallback to static data if empty.
   useEffect(() => {
     let cancelled = false;
-    const loadQuests = async () => {
-      setLoading(true);
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const loadQuests = async (withSpinner = false) => {
+      if (withSpinner) {
+        setLoading(true);
+      }
       try {
         const remote = await fetchRemoteQuests();
         if (cancelled) return;
@@ -63,14 +68,16 @@ export function QuestProvider({ children }: PropsWithChildren) {
           setQuests([...fallbackDaily, ...fallbackEvergreen]);
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && withSpinner) {
           setLoading(false);
         }
       }
     };
-    loadQuests();
+    loadQuests(true);
+    interval = setInterval(() => loadQuests(false), QUEST_REFRESH_MS);
     return () => {
       cancelled = true;
+      if (interval) clearInterval(interval);
     };
   }, []);
 
@@ -81,6 +88,7 @@ export function QuestProvider({ children }: PropsWithChildren) {
       return;
     }
     let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
     const loadCompletions = async () => {
       try {
         const rows = await fetchRemoteCompletions();
@@ -97,8 +105,10 @@ export function QuestProvider({ children }: PropsWithChildren) {
       }
     };
     loadCompletions();
+    interval = setInterval(loadCompletions, COMPLETION_REFRESH_MS);
     return () => {
       cancelled = true;
+      if (interval) clearInterval(interval);
     };
   }, [uid]);
 

@@ -21,6 +21,24 @@ export interface SupabaseAuthApi {
   getUser(): Promise<SupabaseResponse<{ user: any }>>;
 }
 
+export interface SupabaseStorageUploadOptions {
+  contentType?: string;
+  upsert?: boolean;
+}
+
+export interface SupabaseStoragePublicUrl {
+  publicUrl: string;
+}
+
+export interface SupabaseStorageBucket {
+  upload(path: string, file: any, options?: SupabaseStorageUploadOptions): Promise<SupabaseResponse<{ path: string }>>;
+  getPublicUrl(path: string): SupabaseResponse<SupabaseStoragePublicUrl>;
+}
+
+export interface SupabaseStorageApi {
+  from(bucket: string): SupabaseStorageBucket;
+}
+
 export interface PostgrestSingleResponse<T> {
   data: T | null;
   error: SupabaseError | null;
@@ -39,6 +57,7 @@ export interface PostgrestQueryBuilder<T = any> extends Promise<PostgrestSingleR
 export interface SupabaseClient {
   auth: SupabaseAuthApi;
   from(table: string): PostgrestQueryBuilder<any>;
+  storage: SupabaseStorageApi;
 }
 
 export function createClient(url: string, anonKey: string, options?: Record<string, unknown>): SupabaseClient;
