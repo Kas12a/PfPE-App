@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { firestore } from "../lib/firebase";
+import { fetchLeagueLeaderboard } from "../lib/supabaseApi";
 import { generateLeagueStandings } from "../data/leagues";
 
 export type LeagueMember = {
@@ -17,37 +16,42 @@ export function useLeagueStandings(leagueId?: string | null) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!leagueId) {
-      setMembers(generateLeagueStandings("sprout"));
-      return;
-    }
-    setLoading(true);
-    const ref = collection(firestore, "leagues", leagueId, "members");
-    const q = query(ref, orderBy("points", "desc"));
-    const unsub = onSnapshot(
-      q,
-      (snapshot) => {
-        if (snapshot.empty) {
+    let cancelled = false;
+    const loadStandings = async () => {
+      if (!leagueId) {
+        setMembers(generateLeagueStandings("sprout"));
+        return;
+      }
+      setLoading(true);
+      try {
+        const rows = await fetchLeagueLeaderboard(leagueId);
+        if (cancelled) return;
+        if (!rows.length) {
           setMembers(generateLeagueStandings(leagueId));
-          setLoading(false);
           return;
         }
-        const rows = snapshot.docs.map((docSnap, index) => {
-          const data = docSnap.data() as any;
-          return {
-            id: docSnap.id,
-            name: data.name ?? "Player",
-            points: data.points ?? 0,
-            updatedAt: data.updatedAt?.toDate?.() ?? undefined,
-            rank: index + 1,
-          };
-        });
-        setMembers(rows);
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return unsub;
+        const mapped = rows.map((row, index) => ({
+          id: row.id ?? row.user_id ?? `${leagueId}-${index}`,
+          name: row.display_name ?? row.user_id ?? "Player",
+          points: row.points ?? 0,
+          updatedAt: row.created_at ? new Date(row.created_at) : undefined,
+          rank: index + 1,
+        }));
+        setMembers(mapped);
+      } catch {
+        if (!cancelled) {
+          setMembers(generateLeagueStandings(leagueId ?? "sprout"));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    loadStandings();
+    return () => {
+      cancelled = true;
+    };
   }, [leagueId]);
 
   return { members, loading };

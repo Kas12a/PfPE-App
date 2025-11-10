@@ -6,8 +6,7 @@ import { colors } from "../../src/theme/colors";
 import { space } from "../../src/theme/spacing";
 import { useProfile } from "../../src/hooks/useProfile";
 import { useToast } from "../../src/hooks/useToast";
-import { signOut } from "firebase/auth";
-import { auth } from "../../src/lib/firebase";
+import { signOutUser } from "../../src/lib/supabaseApi";
 
 export default function ProfileScreen() {
   const [notify, setNotify] = useState(false);
@@ -41,9 +40,9 @@ export default function ProfileScreen() {
           primaryText: "Log Out",
           onPrimary: async () => {
             try {
-              await signOut(auth);
+              await signOutUser();
             } catch {}
-            setProfile?.((prev) => ({ ...prev, isSignedIn: false }));
+            setProfile?.((prev) => ({ ...prev, isSignedIn: false, userId: undefined }));
             showToast("Logged out");
             router.replace("/auth/get-started?mode=login");
           },

@@ -1,16 +1,26 @@
 import React, { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import * as Haptics from "expo-haptics";
-import { firestore, storage } from "../lib/firebase";
 import { useProfile } from "../hooks/useProfile";
-import { dailyQuests as fallbackDaily, evergreenQuests as fallbackEvergreen } from "../data/quests";
-import { QuestDefinition, QuestEvidenceType } from "../data/quests";
+import {
+  dailyQuests as fallbackDaily,
+  evergreenQuests as fallbackEvergreen,
+  QuestCategory,
+  QuestDefinition,
+  QuestEvidenceType,
+} from "../data/quests";
+import {
+  fetchCompletions as fetchRemoteCompletions,
+  fetchQuests as fetchRemoteQuests,
+  submitCompletion as submitRemoteCompletion,
+  syncLeagueMembership,
+  uploadQuestProof,
+} from "../lib/supabaseApi";
+import type { Completion as CompletionRow, Quest as QuestRow } from "../lib/supabaseApi";
 
 type QuestCompletion = {
   questId: string;
   proofUrl?: string | null;
-  status: "pending" | "approved";
+  status: "pending" | "approved" | "rejected";
   submittedAt?: Date;
   points: number;
   type: QuestEvidenceType;
@@ -30,88 +40,82 @@ const QuestContext = createContext<QuestCtx | null>(null);
 
 export function QuestProvider({ children }: PropsWithChildren) {
   const { profile, setProfile } = useProfile();
-  const uid = profile.firebaseUid;
+  const uid = profile.userId;
   const [quests, setQuests] = useState<QuestDefinition[]>([]);
   const [completions, setCompletions] = useState<Record<string, QuestCompletion>>({});
   const [loading, setLoading] = useState(true);
 
-  // Subscribe to quests collection; fallback to static data if empty.
+  // Fetch quests from Supabase; fallback to static data if empty.
   useEffect(() => {
-    const questsRef = collection(firestore, "quests");
-    const q = query(questsRef, orderBy("order", "asc"));
-    const unsub = onSnapshot(
-      q,
-      (snapshot) => {
-        if (snapshot.empty) {
-          const merged = [...fallbackDaily, ...fallbackEvergreen];
-          setQuests(merged);
-          setLoading(false);
-          return;
+    let cancelled = false;
+    const loadQuests = async () => {
+      setLoading(true);
+      try {
+        const remote = await fetchRemoteQuests();
+        if (cancelled) return;
+        if (!remote.length) {
+          setQuests([...fallbackDaily, ...fallbackEvergreen]);
+        } else {
+          setQuests(remote.map(normalizeQuestRow));
         }
-        const docs: QuestDefinition[] = snapshot.docs.map(
-          (docSnap) =>
-            ({
-              id: docSnap.id,
-              ...docSnap.data(),
-            } as QuestDefinition),
-        );
-        setQuests(docs);
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return unsub;
+      } catch {
+        if (!cancelled) {
+          setQuests([...fallbackDaily, ...fallbackEvergreen]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    loadQuests();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Subscribe to quest completions for the user.
+  // Fetch quest completions for the user.
   useEffect(() => {
     if (!uid) {
       setCompletions({});
       return;
     }
-    const completionsRef = collection(firestore, "users", uid, "completions");
-    const unsub = onSnapshot(completionsRef, (snapshot) => {
-      const map: Record<string, QuestCompletion> = {};
-      snapshot.docs.forEach((docSnap) => {
-        const data = docSnap.data() as any;
-        map[data.questId] = {
-          questId: data.questId,
-          proofUrl: data.proofUrl,
-          status: data.status,
-          points: data.points,
-          type: data.type,
-          submittedAt: data.submittedAt?.toDate?.() ?? undefined,
-        };
-      });
-      setCompletions(map);
-    });
-    return unsub;
+    let cancelled = false;
+    const loadCompletions = async () => {
+      try {
+        const rows = await fetchRemoteCompletions();
+        if (cancelled) return;
+        const map: Record<string, QuestCompletion> = {};
+        rows.forEach((row) => {
+          map[row.quest_id] = mapCompletionRow(row);
+        });
+        setCompletions(map);
+      } catch {
+        if (!cancelled) {
+          setCompletions({});
+        }
+      }
+    };
+    loadCompletions();
+    return () => {
+      cancelled = true;
+    };
   }, [uid]);
 
-  // Ensure league membership document exists.
+  // Ensure league membership exists/up-to-date when user info changes.
   useEffect(() => {
     if (!uid) return;
     const leagueId = profile.league ?? "sprout";
-    const memberRef = doc(firestore, "leagues", leagueId, "members", uid);
-    void setDoc(
-      memberRef,
-      {
-        name: profile.name?.trim() || "Explorer",
-        points: profile.points ?? 0,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-  }, [uid, profile.league]);
+    void syncLeagueMembership({
+      leagueId,
+      displayName: profile.name,
+      points: profile.points ?? 0,
+    }).catch(() => undefined);
+  }, [uid, profile.league, profile.name, profile.points]);
 
-  const submitProof = async (quest: QuestDefinition, fileUri: string, mimeType: string) => {
+  const submitProof = async (_quest: QuestDefinition, fileUri: string, mimeType: string) => {
     if (!uid) throw new Error("You must be signed in to upload proof.");
-    const response = await fetch(fileUri);
-    const blob = await response.blob();
-    const storageRef = ref(storage, `proofs/${uid}/${quest.id}-${Date.now()}`);
-    await uploadBytes(storageRef, blob, { contentType: mimeType });
-    const downloadUrl = await getDownloadURL(storageRef);
-    return downloadUrl;
+    return uploadQuestProof(fileUri, mimeType);
   };
 
   const completeQuest = async (quest: QuestDefinition, proofUrl?: string | null) => {
@@ -123,36 +127,40 @@ export function QuestProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const completionRef = doc(firestore, "users", uid, "completions", quest.id);
-    await setDoc(completionRef, {
+    const status: QuestCompletion["status"] = quest.type === "check" ? "approved" : "pending";
+
+    await submitRemoteCompletion({
       questId: quest.id,
-      points: quest.points,
       proofUrl: proofUrl ?? null,
-      status: quest.type === "check" ? "approved" : "pending",
-      submittedAt: serverTimestamp(),
+      points: quest.points,
       type: quest.type,
-      title: quest.title,
+      status,
     });
 
-    // Update local profile points/stats.
     setProfile?.((prev) => ({
       ...prev,
       points: (prev.points ?? 0) + quest.points,
       questsCompletedThisWeek: (prev.questsCompletedThisWeek ?? 0) + 1,
     }));
 
-    // Mirror points into league standing doc for leaderboards.
-    const leagueId = profile.league ?? "sprout";
-    const memberRef = doc(firestore, "leagues", leagueId, "members", uid);
-    await setDoc(
-      memberRef,
-      {
-        name: profile.name?.trim() || "Explorer",
-        points: (profile.points ?? 0) + quest.points,
-        updatedAt: serverTimestamp(),
+    setCompletions((prev) => ({
+      ...prev,
+      [quest.id]: {
+        questId: quest.id,
+        proofUrl: proofUrl ?? null,
+        status,
+        points: quest.points,
+        type: quest.type,
+        submittedAt: new Date(),
       },
-      { merge: true },
-    );
+    }));
+
+    const leagueId = profile.league ?? "sprout";
+    await syncLeagueMembership({
+      leagueId,
+      displayName: profile.name,
+      points: (profile.points ?? 0) + quest.points,
+    });
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -181,4 +189,30 @@ export function useQuestsContext() {
   const ctx = useContext(QuestContext);
   if (!ctx) throw new Error("useQuestsContext must be used within QuestProvider");
   return ctx;
+}
+
+function normalizeQuestRow(row: QuestRow): QuestDefinition {
+  return {
+    id: row.id,
+    title: row.title,
+    subtitle: row.subtitle ?? "",
+    instructions: row.instructions ?? "",
+    points: row.points ?? 0,
+    impact: row.impact ?? "Make an impact today.",
+    category: (row.category as QuestCategory) ?? "Community",
+    type: (row.type as QuestEvidenceType) ?? "check",
+    due: row.due ?? undefined,
+    requiresEvidenceLabel: row.requires_evidence_label ?? undefined,
+  };
+}
+
+function mapCompletionRow(row: CompletionRow): QuestCompletion {
+  return {
+    questId: row.quest_id,
+    proofUrl: row.proof_url ?? undefined,
+    status: (row.status as QuestCompletion["status"]) ?? "pending",
+    submittedAt: row.submitted_at ? new Date(row.submitted_at) : undefined,
+    points: row.points ?? 0,
+    type: (row.type as QuestEvidenceType) ?? "check",
+  };
 }

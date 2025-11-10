@@ -14,36 +14,35 @@ import {
 import { Feather } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithCredential,
-} from 'firebase/auth';
-import { auth } from '../../src/lib/firebase';
 import { googleClientConfig, hasGoogleSignInConfig } from '../../src/config/google';
 import { radii, space, type } from '../../src/theme/colors';
 import { useProfile } from '../../src/hooks/useProfile';
 import { OnboardingScreenShell } from '../../src/components/onboarding/ScreenShell';
+import { signInWithEmail, signInWithGoogleIdToken, signUpWithEmail } from '../../src/lib/supabaseApi';
 
 WebBrowser.maybeCompleteAuthSession();
 
 type Mode = 'signup' | 'login';
 
-function getAuthErrorMessage(code?: string) {
-  switch (code) {
-    case 'auth/email-already-in-use':
-      return 'That email is already registered. Try logging in.';
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-      return 'Invalid email or password.';
-    case 'auth/user-not-found':
-      return 'No account found. Double check your email or sign up.';
-    case 'auth/network-request-failed':
-      return 'Network error. Please try again.';
-    default:
-      return 'Something went wrong. Please try again.';
+function getAuthErrorMessage(error: unknown) {
+  const rawMessage = typeof error === 'string' ? error : (error as Error)?.message;
+  if (!rawMessage) {
+    return 'Something went wrong. Please try again.';
   }
+
+  if (/already/i.test(rawMessage) && /exist|register|use/i.test(rawMessage)) {
+    return 'That email is already registered. Try logging in.';
+  }
+  if (/invalid/i.test(rawMessage) && /credential|password/i.test(rawMessage)) {
+    return 'Invalid email or password.';
+  }
+  if (/not|found/i.test(rawMessage) && /user|account/i.test(rawMessage)) {
+    return 'No account found. Double check your email or sign up.';
+  }
+  if (/network/i.test(rawMessage)) {
+    return 'Network error. Please try again.';
+  }
+  return rawMessage;
 }
 
 export default function AuthGetStarted() {
@@ -77,7 +76,7 @@ export default function AuthGetStarted() {
     googleClientConfig.iosClientId ??
     googleClientConfig.androidClientId ??
     'dummy-app-client-id.apps.googleusercontent.com';
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  const [_request, response, promptAsync] = Google.useAuthRequest({
     clientId: resolvedClientId,
     iosClientId: googleClientConfig.iosClientId,
     androidClientId: googleClientConfig.androidClientId,
@@ -101,17 +100,22 @@ export default function AuthGetStarted() {
         return;
       }
       try {
-        const credential = GoogleAuthProvider.credential(idToken);
-        await signInWithCredential(auth, credential);
+        const user = await signInWithGoogleIdToken(idToken);
+        setProfile?.((prev) => ({
+          ...prev,
+          userId: user?.id ?? prev.userId,
+          email: user?.email ?? prev.email,
+          isSignedIn: Boolean(user),
+        }));
         router.replace(profile.hasOnboarded ? '/(tabs)' : '/onboarding/create-profile');
-      } catch (err: any) {
-        setError(getAuthErrorMessage(err?.code));
+      } catch (err) {
+        setError(getAuthErrorMessage(err));
       } finally {
         setGoogleLoading(false);
       }
     };
     continueWithGoogle();
-  }, [response, profile.hasOnboarded, router]);
+  }, [response, profile.hasOnboarded, router, setProfile]);
 
   const handleSubmit = async () => {
     if (!formValid) {
@@ -123,15 +127,27 @@ export default function AuthGetStarted() {
     setError('');
     try {
       if (mode === 'signup') {
-        await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-        setProfile?.((prev) => ({ ...prev, hasOnboarded: false }));
+        const user = await signUpWithEmail(trimmedEmail, password);
+        setProfile?.((prev) => ({
+          ...prev,
+          hasOnboarded: false,
+          isSignedIn: true,
+          email: user?.email ?? trimmedEmail,
+          userId: user?.id ?? prev.userId,
+        }));
         router.push('/onboarding/create-profile');
       } else {
-        await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        const user = await signInWithEmail(trimmedEmail, password);
+        setProfile?.((prev) => ({
+          ...prev,
+          isSignedIn: true,
+          email: user?.email ?? trimmedEmail,
+          userId: user?.id ?? prev.userId,
+        }));
         router.replace(profile.hasOnboarded ? '/(tabs)' : '/onboarding/create-profile');
       }
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err?.code));
+    } catch (err) {
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }

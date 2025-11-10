@@ -1,7 +1,6 @@
 import React, { createContext, PropsWithChildren, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { getCurrentUser } from "../lib/supabaseApi";
 
 type Profile = {
   name: string;
@@ -14,7 +13,7 @@ type Profile = {
   ageRange?: string;
   playMode?: string;
   league?: string | null;
-  firebaseUid?: string;
+  userId?: string;
   questsCompletedThisWeek?: number;
   weeklyTarget?: number;
   lastWeeklyReset?: string; // week key to know when to reset
@@ -53,6 +52,7 @@ export function ProfileProvider({ children }: PropsWithChildren) {
     ageRange: "",
     playMode: "individual",
     league: null,
+    userId: undefined,
     questsCompletedThisWeek: 0,
     weeklyTarget: 15,
     lastWeeklyReset: startOfWeekKey(),
@@ -94,15 +94,31 @@ export function ProfileProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setProfile((prev) => ({
-        ...prev,
-        firebaseUid: user?.uid ?? undefined,
-        email: user?.email ?? prev.email,
-        isSignedIn: Boolean(user),
-      }));
-    });
-    return unsubscribe;
+    let cancelled = false;
+    const hydrateAuthState = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (cancelled) return;
+        setProfile((prev) => ({
+          ...prev,
+          userId: user?.id ?? undefined,
+          email: user?.email ?? prev.email,
+          isSignedIn: Boolean(user),
+        }));
+      } catch {
+        if (!cancelled) {
+          setProfile((prev) => ({
+            ...prev,
+            userId: undefined,
+            isSignedIn: false,
+          }));
+        }
+      }
+    };
+    hydrateAuthState();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Persist on changes

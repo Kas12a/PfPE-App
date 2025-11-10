@@ -15,6 +15,7 @@ export interface SupabaseAuthSession {
 
 export interface SupabaseAuthApi {
   signInWithPassword(credentials: { email: string; password: string }): Promise<SupabaseResponse<{ session: SupabaseAuthSession | null; user: any }>>;
+  signInWithIdToken(credentials: { token: string; provider?: string; nonce?: string }): Promise<SupabaseResponse<{ session: SupabaseAuthSession | null; user: any }>>;
   signUp(credentials: { email: string; password: string; options?: Record<string, unknown> }): Promise<SupabaseResponse<{ session: SupabaseAuthSession | null; user: any }>>;
   signOut(): Promise<{ error: SupabaseError | null }>;
   getUser(): Promise<SupabaseResponse<{ user: any }>>;

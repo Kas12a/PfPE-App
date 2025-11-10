@@ -256,6 +256,35 @@ function createClient(url, anonKey) {
       };
     },
 
+    async signInWithIdToken(credentials) {
+      const body = JSON.stringify({
+        id_token: credentials?.token,
+        provider: credentials?.provider ?? 'google',
+        nonce: credentials?.nonce,
+      });
+      const { data, error } = await requestAuth('token?grant_type=id_token', {
+        method: 'POST',
+        headers: { 'Content-Type': JSON_CONTENT_TYPE },
+        body,
+      });
+
+      if (!error && data) {
+        session = {
+          access_token: data.access_token ?? null,
+          refresh_token: data.refresh_token ?? null,
+          user: data.user ?? null,
+        };
+      }
+
+      return {
+        data: {
+          session,
+          user: session ? session.user : null,
+        },
+        error,
+      };
+    },
+
     async signUp(credentials) {
       const body = JSON.stringify({
         email: credentials?.email,
