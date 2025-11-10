@@ -1,7 +1,8 @@
 import supabase from './supabase';
+import { runtimeEnv } from './runtimeEnv';
 
 export type CompletionStatus = 'pending' | 'approved' | 'rejected';
-const PROOF_BUCKET = process.env.EXPO_PUBLIC_SUPABASE_PROOF_BUCKET ?? 'proofs';
+const PROOF_BUCKET = runtimeEnv.supabaseProofBucket ?? 'proofs';
 
 export interface Quest {
   id: string;
