@@ -4,18 +4,28 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-function hasLocalExpoBinary() {
-  const expoPath = path.join(process.cwd(), 'node_modules', '.bin', process.platform === 'win32' ? 'expo.cmd' : 'expo');
-  return fs.existsSync(expoPath);
+const projectRoot = process.cwd();
+const localExpoCli = path.join(projectRoot, 'node_modules', 'expo', 'bin', 'cli');
+
+function ensureExpoCliAvailable() {
+  if (!fs.existsSync(localExpoCli)) {
+    throw new Error('Expo CLI is not installed locally');
+  }
 }
 
 function runExpoExport() {
-  const result = spawnSync('npx', ['expo', 'export', '--platform', 'web'], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-    },
-  });
+  ensureExpoCliAvailable();
+
+  const result = spawnSync(
+    process.execPath,
+    [localExpoCli, 'export', '--platform', 'web'],
+    {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+      },
+    }
+  );
 
   if (result.error) {
     throw result.error;
@@ -34,17 +44,11 @@ function runOfflineFallback(reason) {
 }
 
 function main() {
-  if (hasLocalExpoBinary()) {
-    try {
-      runExpoExport();
-      return;
-    } catch (error) {
-      runOfflineFallback(error.message || 'Unknown error');
-      return;
-    }
+  try {
+    runExpoExport();
+  } catch (error) {
+    runOfflineFallback(error.message || 'Unknown error');
   }
-
-  runOfflineFallback('Expo CLI is not installed locally');
 }
 
 main();
