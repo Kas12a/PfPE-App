@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "web-build": "expo export --platform web"
+    "web-build": "node scripts/web-build.cjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -25,8 +25,10 @@
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-safe-area-context": "~5.6.0",
-    "@supabase/supabase-js": "^2.48.0"
+    "react-native-safe-area-context": "~5.6.0"
+  },
+  "overrides": {
+    "@supabase/supabase-js": "file:vendor/supabase-js"
   },
   "private": true,
   "devDependencies": {
