@@ -1,6 +1,8 @@
 import React, { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useProfile } from "../hooks/useProfile";
+import { questCompletionUpdate } from "../lib/questProgress";
 import {
   dailyQuests as fallbackDaily,
   evergreenQuests as fallbackEvergreen,
@@ -39,13 +41,33 @@ type QuestCtx = {
 const QuestContext = createContext<QuestCtx | null>(null);
 const QUEST_REFRESH_MS = 60_000;
 const COMPLETION_REFRESH_MS = 30_000;
+const QUEST_CACHE_KEY = "@pfpe/quests";
+const COMPLETION_CACHE_KEY = "@pfpe/completions";
 
 export function QuestProvider({ children }: PropsWithChildren) {
-  const { profile, setProfile } = useProfile();
+  const { profile, save } = useProfile();
   const uid = profile.userId;
   const [quests, setQuests] = useState<QuestDefinition[]>([]);
   const [completions, setCompletions] = useState<Record<string, QuestCompletion>>({});
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(QUEST_CACHE_KEY);
+        if (raw && !cancelled) {
+          const cached = JSON.parse(raw) as QuestDefinition[];
+          if (cached?.length) {
+            setQuests(cached);
+          }
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fetch quests from Supabase; fallback to static data if empty.
   useEffect(() => {
@@ -58,10 +80,10 @@ export function QuestProvider({ children }: PropsWithChildren) {
       try {
         const remote = await fetchRemoteQuests();
         if (cancelled) return;
-        if (!remote.length) {
-          setQuests([...fallbackDaily, ...fallbackEvergreen]);
-        } else {
-          setQuests(remote.map(normalizeQuestRow));
+        const normalized = remote.length ? remote.map(normalizeQuestRow) : [...fallbackDaily, ...fallbackEvergreen];
+        if (!cancelled) {
+          setQuests(normalized);
+          await AsyncStorage.setItem(QUEST_CACHE_KEY, JSON.stringify(normalized));
         }
       } catch {
         if (!cancelled) {
@@ -89,6 +111,15 @@ export function QuestProvider({ children }: PropsWithChildren) {
     }
     let cancelled = false;
     let interval: ReturnType<typeof setInterval> | null = null;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(`${COMPLETION_CACHE_KEY}:${uid}`);
+        if (raw && !cancelled) {
+          setCompletions(JSON.parse(raw));
+        }
+      } catch {}
+    })();
+
     const loadCompletions = async () => {
       try {
         const rows = await fetchRemoteCompletions();
@@ -98,6 +129,7 @@ export function QuestProvider({ children }: PropsWithChildren) {
           map[row.quest_id] = mapCompletionRow(row);
         });
         setCompletions(map);
+        await AsyncStorage.setItem(`${COMPLETION_CACHE_KEY}:${uid}`, JSON.stringify(map));
       } catch {
         if (!cancelled) {
           setCompletions({});
@@ -147,11 +179,7 @@ export function QuestProvider({ children }: PropsWithChildren) {
       status,
     });
 
-    setProfile?.((prev) => ({
-      ...prev,
-      points: (prev.points ?? 0) + quest.points,
-      questsCompletedThisWeek: (prev.questsCompletedThisWeek ?? 0) + 1,
-    }));
+    save((prev) => questCompletionUpdate(prev, quest.points));
 
     setCompletions((prev) => ({
       ...prev,

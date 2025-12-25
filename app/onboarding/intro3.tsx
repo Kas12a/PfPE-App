@@ -7,9 +7,9 @@ const hero = { uri: 'https://images.unsplash.com/photo-1469474968028-56623f02e42
 
 export default function Intro3() {
   const router = useRouter();
-  const { setProfile } = useProfile();
+  const { save } = useProfile();
   const goToAuth = (mode: 'login' | 'signup' = 'signup') => {
-    setProfile?.((prev) => ({ ...prev, hasSeenIntro: true }));
+    save({ hasSeenIntro: true });
     router.replace(mode === 'login' ? '/auth/get-started?mode=login' : '/auth/get-started');
   };
   return (

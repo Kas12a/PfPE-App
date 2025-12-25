@@ -7,6 +7,7 @@ import { useProfile } from "../../src/hooks/useProfile";
 import { getWeeklyStats } from "../../src/store/stats";
 import { router } from "expo-router";
 import { useQuests } from "../../src/hooks/useQuests";
+import { ActionLogger } from "../../src/components/actions/ActionLogger";
 
 const fallbackAvatar = { uri: "https://placehold.co/100x100/1f2f27/ffffff?text=Leaf" };
 const heroImage = { uri: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=80" };
@@ -23,12 +24,21 @@ export default function HomeScreen() {
   const emptyState = pts === 0 && weeklyDone === 0;
   const featuredQuests = useMemo(() => dailyQuests.slice(0, 3), [dailyQuests]);
 
+  const avatarIsUrl = profile?.avatar && profile.avatar.startsWith("http");
+  const avatarEmoji = profile?.avatar && !avatarIsUrl ? profile.avatar : null;
+
   return (
     <Screen contentContainerStyle={{ padding: 0 }}>
       <ImageBackground source={heroImage} resizeMode="cover" style={styles.hero}>
         <LinearGradient colors={["rgba(5,26,35,0)", "rgba(5,26,35,0.88)"]} style={StyleSheet.absoluteFill} />
         <View style={styles.heroHeader}>
-          <Image source={profile?.avatar ? { uri: profile.avatar } : fallbackAvatar} style={styles.avatar} />
+          {avatarIsUrl ? (
+            <Image source={{ uri: profile?.avatar as string }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarEmoji}>{avatarEmoji ?? "🌿"}</Text>
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.hi}>Hi, {name} 👋</Text>
             <Text style={styles.caption}>Let’s make today count</Text>
@@ -52,6 +62,7 @@ export default function HomeScreen() {
       </ImageBackground>
 
       <View style={styles.body}>
+        <ActionLogger />
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Today’s Quests</Text>
           <Text style={styles.viewAll} onPress={() => router.push("/(tabs)/quests")}>View All</Text>
@@ -134,6 +145,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.4)",
     marginRight: space.md,
+  },
+  avatarPlaceholder: {
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarEmoji: {
+    fontSize: 28,
   },
   hi: {
     color: "#fff",

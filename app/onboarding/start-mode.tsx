@@ -25,7 +25,7 @@ const MODES = [
 export default function StartMode() {
   const [selected, setSelected] = useState<string | null>(null);
   const router = useRouter();
-  const { setProfile, profile } = useProfile();
+  const { save, profile } = useProfile();
 
   useEffect(() => {
     if (!profile.isSignedIn) {
@@ -35,7 +35,7 @@ export default function StartMode() {
 
   const continueNext = () => {
     if (!selected) return;
-    setProfile?.((prev) => ({ ...prev, playMode: selected }));
+    save({ playMode: selected as "individual" | "group" });
     router.push('/onboarding/interests');
   };
 

@@ -11,7 +11,7 @@ export default function Permissions() {
   const [loc, setLoc] = useState(true);
   const [noti, setNoti] = useState(false);
   const router = useRouter();
-  const { setProfile, profile } = useProfile();
+  const { save, profile } = useProfile();
 
   useEffect(() => {
     if (!profile.isSignedIn) {
@@ -20,7 +20,7 @@ export default function Permissions() {
   }, [profile.isSignedIn, router]);
 
   const finish = () => {
-    setProfile?.((prev) => ({ ...prev, isSignedIn: true, hasOnboarded: true }));
+    save({ isSignedIn: true, hasOnboarded: true });
     router.replace('/(tabs)');
   };
 

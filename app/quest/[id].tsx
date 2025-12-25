@@ -72,7 +72,7 @@ const data: Record<
 export default function QuestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = data[id ?? "walk"] ?? data["walk"]; // safe fallback
-  const { setProfile } = useProfile();
+  const { save } = useProfile();
   const { showToast } = useToast();
 
   return (
@@ -115,8 +115,7 @@ export default function QuestDetail() {
             "led-bulb": 20,
           };
           const add = ptsById[id ?? "walk"] ?? 10;
-          setProfile?.((prev) => ({
-            ...prev,
+          save((prev) => ({
             points: (prev.points ?? 0) + add,
             questsCompletedThisWeek: (prev.questsCompletedThisWeek ?? 0) + 1,
           }));

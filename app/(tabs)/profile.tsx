@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Image, Linking, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { Button, Card, ListItem, ModalSheet, Screen, SectionHeader } from "../../components/ui";
 import { useRouter } from "expo-router";
@@ -7,12 +7,14 @@ import { space } from "../../src/theme/spacing";
 import { useProfile } from "../../src/hooks/useProfile";
 import { useToast } from "../../src/hooks/useToast";
 import { signOutUser } from "../../src/lib/supabaseApi";
+import { useTranslation, supportedLanguages } from "../../src/hooks/useTranslation";
+import { featureFlags } from "../../src/config/features";
 
 export default function ProfileScreen() {
   const [notify, setNotify] = useState(false);
   const [loc, setLoc] = useState(true);
   const [mode, setMode] = useState<'individual' | 'group'>('individual');
-  const { profile, setProfile } = useProfile();
+  const { profile, save } = useProfile();
   const router = useRouter();
   const [editName, setEditName] = useState(profile?.name ?? "");
   const [editAvatar, setEditAvatar] = useState(profile?.avatar ?? "");
@@ -20,6 +22,19 @@ export default function ProfileScreen() {
     null | { title: string; body: string; primaryText?: string; onPrimary?: () => void | Promise<void> }
   >(null);
   const { showToast } = useToast();
+  const { locale, setLanguage } = useTranslation();
+  const previewIsUrl = typeof editAvatar === "string" && editAvatar.startsWith("http");
+
+  useEffect(() => {
+    if (profile?.playMode) {
+      setMode(profile.playMode as "individual" | "group");
+    }
+  }, [profile?.playMode]);
+
+  const handleModeChange = (next: "individual" | "group") => {
+    setMode(next);
+    save({ playMode: next });
+  };
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(() => showToast("Unable to open link"));
@@ -42,7 +57,7 @@ export default function ProfileScreen() {
             try {
               await signOutUser();
             } catch {}
-            setProfile?.((prev) => ({ ...prev, isSignedIn: false, userId: undefined }));
+            save({ isSignedIn: false, userId: undefined });
             showToast("Logged out");
             router.replace("/auth/get-started?mode=login");
           },
@@ -66,24 +81,37 @@ export default function ProfileScreen() {
     <Screen>
       {/* Stats banner */}
       <Card style={styles.banner}>
-        <Text style={styles.name}>{profile?.name ?? "Profile"}</Text>
-        <Text style={styles.email}>Joined 2025</Text>
+        <Text style={styles.name}>{profile?.name ?? "Explorer"}</Text>
+        <Text style={styles.email}>{profile?.email ?? "Eco citizen"}</Text>
         <View style={styles.stats}>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>12 days</Text>
+            <Text style={styles.statValue}>{profile?.streak ?? 0} days</Text>
             <Text style={styles.statLabel}>Current Streak</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>23 days</Text>
+            <Text style={styles.statValue}>{profile?.longestStreak ?? profile?.streak ?? 0} days</Text>
             <Text style={styles.statLabel}>Longest Streak</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>8 quests</Text>
-            <Text style={styles.statLabel}>Average / week</Text>
+            <Text style={styles.statValue}>Lvl {profile?.level ?? 1}</Text>
+            <Text style={styles.statLabel}>Current Level</Text>
           </View>
         </View>
         <Button title="Add Friends" onPress={() => {}} style={{ marginTop: space.md }} />
       </Card>
+
+      {(featureFlags.premiumAvatars || featureFlags.arQuests) ? (
+        <>
+          <SectionHeader title="Premium preview" subtitle="Future experiments" />
+          <Card style={{ marginHorizontal: space.lg, padding: space.lg }}>
+            <Text style={styles.prefText}>Coming soon</Text>
+            <Text style={styles.sheetBody}>
+              Custom avatar personalisation and AR quests are in development. Feature flags keep these prototypes hidden until
+              the team is ready for a safe public test.
+            </Text>
+          </Card>
+        </>
+      ) : null}
 
       {/* Preferences */}
       <SectionHeader title="Preferences" />
@@ -100,10 +128,10 @@ export default function ProfileScreen() {
       <SectionHeader title="Play Mode" />
       <View style={styles.playMode}>
         <Card style={[styles.modeCard, mode === 'individual' && styles.modeOn]}>
-          <Text style={styles.modeTitle} onPress={() => setMode('individual')}>Play as an{"\n"}Individual</Text>
+          <Text style={styles.modeTitle} onPress={() => handleModeChange('individual')}>Play as an{"\n"}Individual</Text>
         </Card>
         <Card style={[styles.modeCard, mode === 'group' && styles.modeOn]}>
-          <Text style={styles.modeTitle} onPress={() => setMode('group')}>Join a{"\n"}group</Text>
+          <Text style={styles.modeTitle} onPress={() => handleModeChange('group')}>Join a{"\n"}group</Text>
         </Card>
       </View>
 
@@ -123,6 +151,20 @@ export default function ProfileScreen() {
       <ListItem title="Privacy Policy" onPress={() => openLink("https://playearth.co.uk/privacy")} />
       <ListItem title="Terms & Conditions" onPress={() => openLink("https://playearth.co.uk/terms")} />
 
+      <SectionHeader title="Language" subtitle="Choose your interface language" />
+      <Card style={{ marginHorizontal: space.lg, padding: space.md, flexDirection: "row", gap: space.md }}>
+        {supportedLanguages.map((lang) => (
+          <Button
+            key={lang.code}
+            title={lang.label}
+            size="sm"
+            variant={locale === lang.code ? "primary" : "secondary"}
+            onPress={() => setLanguage(lang.code)}
+            style={{ flex: 1 }}
+          />
+        ))}
+      </Card>
+
       {/* Edit profile */}
       <SectionHeader title="Edit Profile" />
       <Card style={{ marginHorizontal: space.lg, padding: space.lg }}>
@@ -134,7 +176,7 @@ export default function ProfileScreen() {
           placeholderTextColor={colors.textDim}
           style={styles.input}
         />
-        <Text style={styles.prefText}>Avatar URL (optional)</Text>
+        <Text style={styles.prefText}>Avatar Emoji or URL</Text>
         <TextInput
           value={editAvatar as string}
           onChangeText={setEditAvatar}
@@ -144,20 +186,26 @@ export default function ProfileScreen() {
           keyboardType="url"
           style={styles.input}
         />
-        {!!editAvatar && (
-          <Image
-            source={{ uri: editAvatar as string }}
-            style={{ width: 96, height: 96, borderRadius: 48, alignSelf: "center", marginBottom: space.md }}
-          />
-        )}
+        {editAvatar ? (
+          previewIsUrl ? (
+            <Image
+              source={{ uri: editAvatar as string }}
+              style={{ width: 96, height: 96, borderRadius: 48, alignSelf: "center", marginBottom: space.md }}
+            />
+          ) : (
+            <View style={styles.avatarEmojiPreview}>
+              <Text style={styles.avatarEmojiText}>{editAvatar}</Text>
+            </View>
+          )
+        ) : null}
         <Button
           title="Save Changes"
           onPress={() => {
             const name = editName.trim();
-            setProfile?.((prev) => ({
-              ...prev,
+            const avatar = editAvatar?.toString().trim() || undefined;
+            save((prev) => ({
               name: name || prev.name,
-              avatar: editAvatar?.toString().trim() || null,
+              avatar: avatar ?? prev.avatar,
             }));
             showToast("Profile updated");
           }}
@@ -222,6 +270,19 @@ const styles = StyleSheet.create({
   sheetBody: {
     color: colors.text,
     lineHeight: 20,
+  },
+  avatarEmojiPreview: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.card,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: space.md,
+  },
+  avatarEmojiText: {
+    fontSize: 42,
   },
 });
 

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Speech from "expo-speech";
 import { Button, Card, ProgressBar, Screen, SectionHeader } from "../../components/ui";
 import { colors } from "../../src/theme/colors";
 import { space } from "../../src/theme/spacing";
@@ -18,6 +19,7 @@ export default function QuestsScreen() {
   const { profile } = useProfile();
   const { showToast } = useToast();
   const { dailyQuests, evergreenQuests, completions, loading, submitProof, completeQuest } = useQuests();
+  const speechLocale = profile?.language === "es" ? "es-ES" : "en-US";
 
   const allQuests = useMemo(() => [...dailyQuests, ...evergreenQuests], [dailyQuests, evergreenQuests]);
   const filtered = useMemo(
@@ -73,6 +75,16 @@ export default function QuestsScreen() {
     }
   };
 
+  const speakQuest = (quest: QuestDefinition) => {
+    const message = `${quest.title}. ${quest.instructions}`;
+    try {
+      Speech.stop();
+      Speech.speak(message, { language: speechLocale });
+    } catch {
+      showToast("Unable to start text-to-speech right now.");
+    }
+  };
+
   return (
     <Screen>
       <SectionHeader title="Quests" subtitle="Pick a quest and earn points" right={<Text style={styles.viewAll}>Need help?</Text>} />
@@ -123,6 +135,9 @@ export default function QuestsScreen() {
               </View>
             </View>
             <Text style={styles.questInstructions}>{quest.instructions}</Text>
+            <Pressable style={styles.ttsButton} onPress={() => speakQuest(quest)} accessibilityRole="button">
+              <Text style={styles.ttsText}>{profile?.language === "es" ? "🔊 Escuchar instrucciones" : "🔊 Hear instructions"}</Text>
+            </Pressable>
             <View style={styles.actionRow}>
               <View style={styles.typePill}>
                 <Text style={styles.typePillText}>
@@ -210,6 +225,8 @@ const styles = StyleSheet.create({
   questPoints: { color: colors.neon, fontWeight: "900" },
   questCategory: { color: colors.textDim, fontSize: 12 },
   questInstructions: { color: colors.textDim, marginTop: 12, lineHeight: 20 },
+  ttsButton: { marginTop: space.xs },
+  ttsText: { color: colors.neon, fontSize: 13, fontWeight: "700" },
   actionRow: {
     flexDirection: "row",
     justifyContent: "space-between",

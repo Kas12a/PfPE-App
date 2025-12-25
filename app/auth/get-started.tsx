@@ -55,7 +55,7 @@ export default function AuthGetStarted() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
-  const { profile, setProfile } = useProfile();
+  const { profile, save } = useProfile();
 
   useEffect(() => {
     if (params.mode === 'login') {
@@ -101,11 +101,16 @@ export default function AuthGetStarted() {
       }
       try {
         const user = await signInWithGoogleIdToken(idToken);
-        setProfile?.((prev) => ({
-          ...prev,
+        save((prev) => ({
           userId: user?.id ?? prev.userId,
           email: user?.email ?? prev.email,
           isSignedIn: Boolean(user),
+          name: prev.name || "Explorer",
+          avatar: prev.avatar || "🌿",
+          level: prev.level ?? 1,
+          points: prev.points ?? 0,
+          rank: prev.rank ?? 0,
+          streak: prev.streak ?? 0,
         }));
         router.replace(profile.hasOnboarded ? '/(tabs)' : '/onboarding/create-profile');
       } catch (err) {
@@ -115,7 +120,7 @@ export default function AuthGetStarted() {
       }
     };
     continueWithGoogle();
-  }, [response, profile.hasOnboarded, router, setProfile]);
+  }, [response, profile.hasOnboarded, router, save]);
 
   const handleSubmit = async () => {
     if (!formValid) {
@@ -128,21 +133,31 @@ export default function AuthGetStarted() {
     try {
       if (mode === 'signup') {
         const user = await signUpWithEmail(trimmedEmail, password);
-        setProfile?.((prev) => ({
-          ...prev,
+        save((prev) => ({
           hasOnboarded: false,
           isSignedIn: true,
           email: user?.email ?? trimmedEmail,
           userId: user?.id ?? prev.userId,
+          name: prev.name || "Explorer",
+          avatar: prev.avatar || "🌿",
+          level: prev.level ?? 1,
+          points: prev.points ?? 0,
+          rank: prev.rank ?? 0,
+          streak: prev.streak ?? 0,
         }));
         router.push('/onboarding/create-profile');
       } else {
         const user = await signInWithEmail(trimmedEmail, password);
-        setProfile?.((prev) => ({
-          ...prev,
+        save((prev) => ({
           isSignedIn: true,
           email: user?.email ?? trimmedEmail,
           userId: user?.id ?? prev.userId,
+          name: prev.name || "Explorer",
+          avatar: prev.avatar || "🌿",
+          level: prev.level ?? 1,
+          points: prev.points ?? 0,
+          rank: prev.rank ?? 0,
+          streak: prev.streak ?? 0,
         }));
         router.replace(profile.hasOnboarded ? '/(tabs)' : '/onboarding/create-profile');
       }

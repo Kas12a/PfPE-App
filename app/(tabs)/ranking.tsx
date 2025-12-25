@@ -23,6 +23,9 @@ export default function RankingScreen() {
   const userName = profile?.name?.trim() || "You";
   const userPoints = profile?.points ?? 0;
   const userRank = profile?.rank ?? 0;
+  const userLevel = profile?.level ?? 1;
+  const userStreak = profile?.streak ?? 0;
+  const longestStreak = profile?.longestStreak ?? userStreak;
   const { members: leagueMembers, loading } = useLeagueStandings(profile?.league);
 
   const standings = useMemo<StandingRow[]>(() => {
@@ -55,6 +58,16 @@ export default function RankingScreen() {
         <View style={{ marginTop: 10 }}>
           <ProgressBar progress={userRank && userRank <= 3 ? 1 : 0.65} />
           <Text style={styles.progressNote}>{userRank && userRank <= 3 ? "You’re in the promotion zone!" : "Reach top 3 to secure promotion."}</Text>
+        </View>
+        <View style={styles.levelRow}>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelValue}>Level {userLevel}</Text>
+            <Text style={styles.levelLabel}>Current tier</Text>
+          </View>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelValue}>{userStreak} day streak</Text>
+            <Text style={styles.levelLabel}>Longest {longestStreak}</Text>
+          </View>
         </View>
         <Button title="View Your Stats" onPress={() => router.push("/ranking-detail")} style={{ marginTop: 12 }} />
       </Card>
@@ -104,6 +117,16 @@ const styles = StyleSheet.create({
   rankCaption: { color: colors.textDim, marginTop: 4 },
   trophy: { fontSize: 36 },
   progressNote: { marginTop: 6, color: colors.textDim },
+  levelRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 12 },
+  levelBadge: {
+    flex: 1,
+    marginRight: space.sm,
+    padding: space.sm,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  levelValue: { color: colors.text, fontWeight: "800" },
+  levelLabel: { color: colors.textDim, fontSize: 12, marginTop: 4 },
   leagueCard: { marginHorizontal: space.lg, marginTop: space.lg, padding: space.lg, borderColor: "rgba(255,255,255,0.08)", borderWidth: 1 },
   leagueTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
   leagueDesc: { color: colors.textDim, marginTop: 6 },

@@ -7,17 +7,20 @@ const BASE_POINTS: Record<ActionType, number> = {
   cycle: 10, refuse_plastic: 5, recycle: 5, energy_save: 8, plant_tree: 25,
 };
 
-export type ActionEntry = { id: string; type: ActionType; qty: number; pts: number; at: number; user: string };
+export type ActionEntry = { id: string; type: ActionType; qty: number; pts: number; at: number; user: string; synced?: boolean };
+export type AddActionResult = { pts: number; streak: number; todayTotal: number };
 
 type Store = {
   points: number;                 // lifetime points
   actions: ActionEntry[];         // history (last 500)
-  addAction: (p: { type: ActionType; qty?: number; user?: string }) => void;
+  addAction: (p: { type: ActionType; qty?: number; user?: string }) => AddActionResult;
 
   // daily tracking
   streak: number;                 // consecutive days with at least 1 action
   todayTotal: number;             // points earned today
   resetAll: () => void;
+  markSynced: (ids: string[]) => void;
+  loaded: boolean;
 };
 
 const PTS_KEY = 'pfpe_points_v2';
@@ -87,10 +90,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     // history
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setActions(prev => [{ id, type, qty: n, pts, at: Date.now(), user }, ...prev].slice(0, 500));
+    setActions(prev => [{ id, type, qty: n, pts, at: Date.now(), user, synced: false }, ...prev].slice(0, 500));
 
     // daily + streak
     const today = isoDay();
+    let computedStreak = meta.streak;
+    let computedToday = meta.todayTotal;
     setMeta(prev => {
       const isNewDay = prev.todayISO !== today;
       const lastActive = prev.lastActiveISO;
@@ -103,14 +108,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } else if (!lastActive) {
         nextStreak = 1;
       }
-
+      const nextTodayTotal = (isNewDay ? 0 : prev.todayTotal) + pts;
+      computedStreak = nextStreak;
+      computedToday = nextTodayTotal;
       return {
         todayISO: today,
         lastActiveISO: today,
-        todayTotal: (isNewDay ? 0 : prev.todayTotal) + pts,
+        todayTotal: nextTodayTotal,
         streak: nextStreak,
       };
     });
+
+    return { pts, streak: computedStreak, todayTotal: computedToday };
   };
 
   const resetAll = () => {
@@ -119,9 +128,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setMeta({ streak: 0, todayTotal: 0, todayISO: isoDay(), lastActiveISO: undefined });
   };
 
+  const markSynced = (ids: string[]) => {
+    if (!ids.length) return;
+    setActions(prev => prev.map(entry => (ids.includes(entry.id) ? { ...entry, synced: true } : entry)));
+  };
+
   const value = useMemo<Store>(() => ({
-    points, actions, addAction, streak: meta.streak, todayTotal: meta.todayTotal, resetAll
-  }), [points, actions, meta]);
+    points,
+    actions,
+    addAction,
+    streak: meta.streak,
+    todayTotal: meta.todayTotal,
+    resetAll,
+    markSynced,
+    loaded,
+  }), [points, actions, meta, loaded]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

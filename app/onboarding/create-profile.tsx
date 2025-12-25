@@ -11,7 +11,7 @@ const AVATARS = ['🌲', '🌳', '🌴', '🌿', '🌾', '🌱'];
 const AGE_OPTIONS = ['Under 18', '18-24', '25-34', '35-44', '45+'];
 
 export default function CreateProfile() {
-  const { profile, setProfile } = useProfile();
+  const { profile, save } = useProfile();
   const router = useRouter();
   const [avatar, setAvatar] = useState(profile.avatar ?? AVATARS[0]);
   const [name, setName] = useState(profile.name ?? '');
@@ -26,13 +26,12 @@ export default function CreateProfile() {
 
   const onContinue = () => {
     if (!name.trim()) return;
-    setProfile?.((prev) => ({
-      ...prev,
+    save(() => ({
       name: name.trim(),
       avatar,
       ageRange,
-      level: prev.level ?? 1,
-      league: prev.league ?? 'sprout',
+      level: profile.level ?? 1,
+      league: profile.league ?? 'sprout',
     }));
     router.push('/onboarding/start-mode');
   };
