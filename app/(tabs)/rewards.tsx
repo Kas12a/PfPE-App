@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import {
   BadgeGrid,
@@ -13,12 +13,44 @@ import {
 import { colors } from "../../src/theme/colors";
 import { space } from "../../src/theme/spacing";
 import { useProfile } from "../../src/hooks/useProfile";
+import { getBalance, type CreditAccount } from "../../src/lib/creditsService";
+import { useToast } from "../../src/hooks/useToast";
 
 export default function RewardsScreen() {
   const { profile } = useProfile();
+  const { showToast } = useToast();
   const currentPoints = profile?.points ?? 2450;
   const nextMilestone = Math.ceil((currentPoints + 1) / 1000) * 1000; // next 1k block
   const toNext = Math.max(0, nextMilestone - currentPoints);
+  const [creditsAccount, setCreditsAccount] = useState<CreditAccount | null>(null);
+  const [creditsLoading, setCreditsLoading] = useState(false);
+  const openCredits = () => router.push("/credits" as never);
+  const openRedeemCredits = () => router.push("/credits/redeem" as never);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!profile?.userId) {
+      setCreditsAccount(null);
+      return;
+    }
+    setCreditsLoading(true);
+    (async () => {
+      try {
+        const acct = await getBalance();
+        if (!cancelled) {
+          setCreditsAccount(acct);
+        }
+      } catch (err) {
+        if (!cancelled) showToast(err instanceof Error ? err.message : "Unable to load credits");
+      } finally {
+        if (!cancelled) setCreditsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.userId, showToast]);
 
   const badges = [
     { title: "Tree Guardian", icon: "🌳", locked: false },
@@ -39,6 +71,32 @@ export default function RewardsScreen() {
   return (
     <Screen>
       <SectionHeader title="Rewards" subtitle="Celebrate your impact" />
+
+      <Card style={styles.creditsCard}>
+        <View style={styles.creditsHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.creditsLabel}>Impact credits wallet</Text>
+            <Text style={styles.creditsValue}>
+              {creditsAccount ? creditsAccount.balance.toFixed(0) : creditsLoading ? "…" : "—"}
+            </Text>
+            <Text style={styles.creditsSubtitle}>Closed-loop credits – earn, redeem, donate</Text>
+          </View>
+          <View style={styles.creditsActions}>
+            <Button
+              title="View"
+              size="sm"
+              variant="secondary"
+              onPress={openCredits}
+              style={styles.creditsActionButton}
+            />
+            <Button
+              title="Redeem"
+              size="sm"
+              onPress={openRedeemCredits}
+            />
+          </View>
+        </View>
+      </Card>
 
       {/* Milestone / points */}
       <Card style={styles.mileCard}>
@@ -69,7 +127,7 @@ export default function RewardsScreen() {
           right={
             <View style={{ alignItems: "flex-end" }}>
               <Text style={styles.costText}>{r.cost} pts</Text>
-              <Button title="Redeem" size="sm" onPress={() => router.push("/redeem")} />
+              <Button title="Redeem" size="sm" onPress={openRedeemCredits} />
             </View>
           }
         />
@@ -86,6 +144,37 @@ export default function RewardsScreen() {
 }
 
 const styles = StyleSheet.create({
+  creditsCard: {
+    marginHorizontal: space.lg,
+    marginBottom: space.lg,
+  },
+  creditsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  creditsLabel: {
+    color: colors.textDim,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  creditsValue: {
+    color: colors.text,
+    fontSize: 36,
+    fontWeight: "900",
+  },
+  creditsSubtitle: {
+    color: colors.textDim,
+    marginTop: 4,
+  },
+  creditsActions: {
+    marginLeft: space.md,
+    justifyContent: "center",
+  },
+  creditsActionButton: {
+    marginBottom: space.sm,
+  },
   mileCard: { marginHorizontal: space.lg, padding: space.lg },
   mileHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
   mileTitle: { color: colors.text, fontWeight: "800" },
